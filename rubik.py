@@ -411,4 +411,28 @@ class RubikCube:
         self.animation_angle = 0
         self.animation_target = 0
 
+    def __eq__(self, other):
+        """Compare two RubikCube instances for equality"""
+        if not isinstance(other, RubikCube):
+            return False
+        
+        # Compare pieces based on positions and colors
+        if len(self.pieces) != len(other.pieces):
+            return False
+            
+        # Sort pieces by position for consistent comparison
+        self_pieces = sorted(self.pieces, key=lambda p: tuple(p.position))
+        other_pieces = sorted(other.pieces, key=lambda p: tuple(p.position))
+        
+        for p1, p2 in zip(self_pieces, other_pieces):
+            if tuple(p1.position) != tuple(p2.position) or p1.colors != p2.colors:
+                return False
+        return True
+    
+    def __lt__(self, other):
+        """Less than comparison - required for some algorithms"""
+        # In this case, less than doesn't make semantic sense for cubes
+        # We'll use a stable fallback based on object id
+        return id(self) < id(other)
+
 # Các phương thức khác để quản lý Rubik sẽ được thêm vào sau
