@@ -5,6 +5,7 @@ from PyQt5.QtGui import *
 from rubik_widget import RubikWidget
 from controls_widget import ControlsWidget
 from result_panel import ResultPanel
+from thread_manager import thread_manager  # Import thread manager early
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -50,6 +51,10 @@ class MainWindow(QMainWindow):
 
 def main():
     app = QApplication(sys.argv)
+    
+    # Initialize thread pool early and show core allocation
+    print(f"Starting with {thread_manager.NUM_CORES} computation cores and {thread_manager.UI_CORES} UI cores")
+    
     window = MainWindow()
     window.show()
     sys.exit(app.exec_())

@@ -2,9 +2,15 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from rubik import RubikCube
-
+from algorithms.search import BFS, DFS, AStar, IDAStar, BidirectionalSearch, BeamSearch
+from algorithms.other import GeneticAlgorithm, MonteCarloTreeSearch
+from algorithms.advanced import KociembaAlgorithm, ThistlethwaiteAlgorithm
+from worker import SolverWorker
+from thread_manager import thread_manager
 
 class AlgorithmGroup(QGroupBox):
+    buttonClicked = pyqtSignal(str)  # Add new signal
+    
     def __init__(self, title, algorithms, parent=None):
         super().__init__(title, parent)
         layout = QVBoxLayout()
@@ -17,7 +23,10 @@ class AlgorithmGroup(QGroupBox):
         
         for algo in algorithms:
             btn = QPushButton(algo)
-            btn.setToolTip(algo)  # Show full name on hover
+            btn.setObjectName(algo)  # Set object name for identification
+            btn.setToolTip(algo)
+            # Connect directly to local slot
+            btn.clicked.connect(lambda checked, name=algo: self.buttonClicked.emit(name))
             scroll_layout.addWidget(btn)
         
         scroll_layout.addStretch()
@@ -25,6 +34,15 @@ class AlgorithmGroup(QGroupBox):
         scroll.setWidget(scroll_content)
         layout.addWidget(scroll)
         self.setLayout(layout)
+    
+    def get_controls_widget(self):
+        """Tìm ControlsWidget parent"""
+        parent = self.parent()
+        while parent:
+            if isinstance(parent, ControlsWidget):
+                return parent
+            parent = parent.parent()
+        return None
 
 class ResultPanel(QWidget):
     def __init__(self, parent=None):
@@ -121,17 +139,22 @@ class ControlsWidget(QWidget):
         algorithm_groups = {
             "Search": [
                 "Breadth-First Search", "Depth-First Search", 
-                "A* Search", "IDA*",
+                "A* Search", "IDA*", 
                 "Bidirectional Search", "Beam Search"
             ],
             "Other": [
                 "Genetic Algorithm", "Monte Carlo Tree Search"
+            ],
+            "Advanced": [
+                "Kociemba's Algorithm", "Thistlethwaite's Algorithm"
             ]
         }
         
         # Add groups to tabs
         for group_name, algorithms in algorithm_groups.items():
             group = AlgorithmGroup(group_name, algorithms)
+            # Connect group's signal to our slot
+            group.buttonClicked.connect(self.on_algorithm_clicked)
             tabs.addTab(group, group_name)
         
         main_layout.addWidget(tabs)
@@ -148,6 +171,9 @@ class ControlsWidget(QWidget):
 
     def set_result_panel(self, panel):
         self.result_panel = panel
+        # Pass the rubik_widget to result panel
+        if self.result_panel:
+            self.result_panel.set_rubik_widget(self.rubik_widget)
 
     def apply_moves(self):
         moves = self.parse_moves(self.moves_input.text())
@@ -194,36 +220,102 @@ class ControlsWidget(QWidget):
         self.rubik_widget.update()
 
     def on_algorithm_clicked(self, algo_name):
-        if not self.result_panel:
+        if not self.result_panel or hasattr(self, 'worker'):
             return
-        """Handle algorithm button clicks"""
-        # Placeholder algorithm info - you'll need to fill this with real data
-        algorithm_info = {
-            "Breadth-First Search": {
-                "info": "BFS is a graph traversal algorithm that explores all vertices at the present depth before moving on to vertices at the next depth level.",
-                "complexity": "O(b^d)",
-                "details": "- Complete: Yes\n- Optimal: Yes (with uniform cost)\n- Space complexity: O(b^d)"
-            },
-            # Add more algorithm information here
-        }
-        
-        if algo_name in algorithm_info:
-            info = algorithm_info[algo_name]
-            # TODO: Implement actual solving logic here
-            self.result_panel.update_results(
-                "R U R' U'",  # Placeholder solution
-                0.05,  # Placeholder time
-                info["complexity"]
-            )
-            self.result_panel.update_info(
-                f"{algo_name}\n\n{info['info']}\n\n{info['details']}"
-            )
 
-    def on_algorithm_selected(self, name):
-        """Handle algorithm selection"""
-        if self.result_panel:
-            self.result_panel.set_algorithm(name)
-            self.result_panel.add_result(f"Selected algorithm: {name}")
-            self.result_panel.add_result("This is a placeholder. Actual implementation coming soon.")
-            # Placeholder for algorithm execution
-            pass
+        # Show system info
+        from thread_manager import ThreadManager
+        self.result_panel.add_result(
+            f"System: {ThreadManager.TOTAL_CORES} CPU cores available\n"
+            f"UI reserved cores: {ThreadManager.UI_CORES}\n"
+            f"Computation cores: {ThreadManager.NUM_CORES}\n"
+            f"Active threads: {thread_manager.active_thread_count}\n"
+        )
+
+        # Map algorithm names to their classes
+        algorithm_map = {
+            "Breadth-First Search": BFS,
+            "Depth-First Search": DFS,
+            "A* Search": AStar,
+            "IDA*": IDAStar,
+            "Bidirectional Search": BidirectionalSearch,
+            "Beam Search": BeamSearch,
+            "Genetic Algorithm": GeneticAlgorithm,
+            "Monte Carlo Tree Search": MonteCarloTreeSearch,
+            "Kociemba's Algorithm": KociembaAlgorithm,
+            "Thistlethwaite's Algorithm": ThistlethwaiteAlgorithm
+        }
+
+        if algo_name in algorithm_map:
+            # Create worker first without an algorithm
+            self.worker = SolverWorker(None)
+            
+            # Create algorithm
+            algorithm = algorithm_map[algo_name](self.rubik_widget.rubik)
+            
+            # Set algorithm in worker AFTER it's created
+            self.worker.set_algorithm(algorithm)
+            
+            # Cập nhật UI
+            self.result_panel.set_algorithm(algo_name)
+            self.result_panel.clear_results()
+            
+            # Connect worker signals to result panel
+            self.worker.signals.progress.connect(self.result_panel.set_progress)
+            self.worker.signals.status.connect(self.result_panel.add_result)
+            self.worker.signals.finished.connect(self.handle_solution)
+            self.worker.signals.error.connect(self.handle_error)
+            # Connect new metrics signal
+            self.worker.signals.metrics.connect(self.result_panel.update_metrics)
+            
+            # Thêm cancel button
+            if not hasattr(self, 'cancel_btn'):
+                self.cancel_btn = QPushButton("Cancel")
+                self.cancel_btn.clicked.connect(self.cancel_solving)
+                self.layout().addWidget(self.cancel_btn)
+            self.cancel_btn.show()
+            
+            # Add to thread pool
+            thread_manager.start_task(self.worker)
+
+    def handle_solution(self, solution, time_taken):
+        if solution:
+            # Cập nhật kết quả
+            self.result_panel.update_results(
+                solution,  # Pass the solution directly
+                time_taken,
+                self.worker.algorithm.complexity
+            )
+            
+            # Cập nhật thông tin thuật toán vào panel bên phải
+            self.result_panel.update_info(
+                f"<h3>{self.worker.algorithm.__class__.__name__}</h3>\n\n"
+                f"<p><b>Description:</b><br>{self.worker.algorithm.description}</p>\n\n"
+                f"<p><b>Time complexity:</b> {self.worker.algorithm.complexity}</p>\n"
+                f"<p><b>Execution time:</b> {time_taken:.3f} seconds</p>\n"
+                f"<p><b>Solution length:</b> {len(solution)} moves</p>"
+            )
+            
+            # Don't auto-execute moves anymore
+            # Let the user decide using the step buttons
+        
+        # Hide progress bar
+        self.result_panel.set_progress(0, 0)
+        
+        # Cleanup
+        self.cleanup_worker()
+
+    def handle_error(self, error_msg):
+        self.result_panel.add_result(f"Error: {error_msg}")
+        self.cleanup_worker()
+
+    def cancel_solving(self):
+        if hasattr(self, 'worker'):
+            self.worker.cancel()
+            self.cleanup_worker()
+
+    def cleanup_worker(self):
+        if hasattr(self, 'worker'):
+            delattr(self, 'worker')
+        if hasattr(self, 'cancel_btn'):
+            self.cancel_btn.hide()
