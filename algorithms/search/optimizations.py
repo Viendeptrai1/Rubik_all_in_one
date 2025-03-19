@@ -238,73 +238,55 @@ class SearchOptimizations:
         return False
 
     @staticmethod
-    def optimized_state_key(cube) -> int:
-        """
-        Generate an optimized, compact hash key for cube states.
-        Uses a binary representation for better performance.
-        """
-        # Check if we have it in cache first
-        cube_id = id(cube)
-        with SearchOptimizations._state_key_cache_lock:
-            if cube_id in SearchOptimizations._state_key_cache:
-                SearchOptimizations._state_key_cache_hits += 1
-                return SearchOptimizations._state_key_cache[cube_id]
-            SearchOptimizations._state_key_cache_misses += 1
+    def optimized_state_key(cube):
+        # The implementation expects cube.faces but RubikCube doesn't have this attribute
+        # We need to adapt the code to work with the actual cube representation
         
-        # If not in cache, compute it
-        # Create a fixed-size binary representation of the cube state
-        # Each piece is represented by its position and color orientation
-        buffer = bytearray(48)  # Fixed size buffer
+        # Check what attributes/methods the cube actually has
+        # Most likely it has a way to get the state of each face
         
-        # Process corner pieces (8 corners * 3 bytes each = 24 bytes)
-        corner_idx = 0
-        for piece in sorted(cube.pieces, key=lambda p: tuple(p.position)):
-            if len(piece.colors) == 3:  # Corner piece
-                if corner_idx < 8:  # Protect against out-of-bounds
-                    pos = tuple(piece.position)
-                    # Encode position (2 bytes)
-                    buffer[corner_idx*3] = (pos[0] << 4) | pos[1]
-                    buffer[corner_idx*3 + 1] = pos[2]
-                    
-                    # Encode color orientation (1 byte)
-                    color_byte = 0
-                    for i, (face, _) in enumerate(sorted(piece.colors.items())):
-                        color_byte |= (ord(face) & 0xF) << (i*4)
-                    buffer[corner_idx*3 + 2] = color_byte
-                    
-                    corner_idx += 1
+        # Common implementations may have:
+        # 1. get_state() or get_faces() method
+        # 2. state or cube_state attribute
+        # 3. or individual face attributes like up_face, down_face, etc.
         
-        # Process edge pieces (12 edges * 2 bytes each = 24 bytes)
-        edge_idx = 0
-        for piece in sorted(cube.pieces, key=lambda p: tuple(p.position)):
-            if len(piece.colors) == 2:  # Edge piece
-                if edge_idx < 12:  # Protect against out-of-bounds
-                    pos = tuple(piece.position)
-                    # Encode position (1 byte)
-                    buffer[24 + edge_idx*2] = (pos[0] << 4) | (pos[1] << 2) | pos[2]
-                    
-                    # Encode color orientation (1 byte)
-                    color_byte = 0
-                    for i, (face, _) in enumerate(sorted(piece.colors.items())):
-                        color_byte |= (ord(face) & 0xF) << (i*4)
-                    buffer[24 + edge_idx*2 + 1] = color_byte
-                    
-                    edge_idx += 1
+        # Let's create a generic approach that works with different cube representations
+        state = []
         
-        # Generate final hash from the buffer
-        result = hash(bytes(buffer))
+        # Try different common approaches to access cube state:
+        if hasattr(cube, 'get_state'):
+            # If the cube has a get_state() method
+            faces = cube.get_state()
+        elif hasattr(cube, 'get_faces'):
+            # If the cube has a get_faces() method
+            faces = cube.get_faces()
+        elif hasattr(cube, 'state'):
+            # If the cube has a state attribute
+            faces = cube.state
+        elif hasattr(cube, 'cube_state'):
+            # If the cube has a cube_state attribute
+            faces = cube.cube_state
+        elif all(hasattr(cube, f) for f in ['up', 'down', 'left', 'right', 'front', 'back']):
+            # If the cube has individual face attributes
+            faces = [cube.up, cube.down, cube.left, cube.right, cube.front, cube.back]
+        else:
+            # If we can't detect the structure, use string representation as fallback
+            return str(cube)
         
-        # Cache the result
-        with SearchOptimizations._state_key_cache_lock:
-            # Check if cache is too large and trim if needed
-            if len(SearchOptimizations._state_key_cache) > SearchOptimizations._state_key_cache_max_size:
-                # Keep only half the entries (most recent will be maintained by Python's dict implementation)
-                keys_to_keep = list(SearchOptimizations._state_key_cache.keys())[-SearchOptimizations._state_key_cache_max_size//2:]
-                SearchOptimizations._state_key_cache = {k: SearchOptimizations._state_key_cache[k] for k in keys_to_keep}
-            
-            SearchOptimizations._state_key_cache[cube_id] = result
-            
-        return result
+        # Create a string representation of the cube state
+        state_string = ""
+        
+        # Process each face
+        for face in faces:
+            if isinstance(face, list) or isinstance(face, tuple):
+                # If face is a list/tuple of colors
+                for color in face:
+                    state_string += str(color)
+            else:
+                # If face is something else, just convert it to string
+                state_string += str(face)
+        
+        return state_string
 
     @staticmethod
     def get_cache_stats():

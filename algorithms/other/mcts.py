@@ -43,7 +43,7 @@ class MonteCarloTreeSearch(SolverAlgorithm):
                 self.solution = self._get_move_sequence(node)
                 return self.solution
         
-        return self._get_best_sequence(root)
+        return self._get_move_sequence(root)
 
     def _select(self, node: Node) -> Node:
         while node.children and not self._is_solved(node.cube):
