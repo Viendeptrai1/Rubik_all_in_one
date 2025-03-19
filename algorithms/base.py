@@ -138,8 +138,8 @@ class SolverAlgorithm(ProgressMixin, ABC):
         """Tạo một Rubik đã giải"""
         return RubikCube(self.cube.size)
 
-    def _cube_state(self, cube: RubikCube) -> int:
-        """Chuyển trạng thái Rubik thành giá trị hash để lưu trong visited - dùng phiên bản tối ưu"""
+    def _cube_state(self, cube):
+        # Use the optimized_state_key function that now handles different cube implementations
         return SearchOptimizations.optimized_state_key(cube)
 
     def _apply_move(self, cube: RubikCube, move: str) -> RubikCube:
