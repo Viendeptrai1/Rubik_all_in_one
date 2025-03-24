@@ -1,27 +1,36 @@
-# Rubik Solver
+# Rubik Cube Simulator
 
-Chào mừng bạn đến với dự án Rubik Solver! Dự án này nhằm mục đích phát triển một ứng dụng Python để mô phỏng và giải Rubik 2x2 và 3x3 với giao diện đồ họa 3D hiện đại.
+Chào mừng bạn đến với dự án Rubik Cube Simulator! Dự án này nhằm mục đích phát triển một ứng dụng Python để mô phỏng khối Rubik 3x3 với giao diện đồ họa 3D.
 
-## Mục tiêu
-- Hiển thị khối Rubik 3D (2x2 và 3x3) với khả năng xoay và màu sắc đẹp.
-- Nhận diện 6 mặt Rubik bằng camera (dùng OpenCV).
-- Hỗ trợ nhiều thuật toán giải (newbie cho 2x2, kociemba cho 3x3).
-- Giao diện người dùng (Dear PyGui) với hai chế độ xuất kết quả: từng bước và tự động xoay với animation.
+## Tính năng
+- Hiển thị khối Rubik 3D với khả năng xoay và màu sắc đẹp.
+- Xoay các mặt của khối Rubik với animation mượt mà.
+- Nhập chuỗi nước đi theo ký hiệu tiêu chuẩn (F, B, R, L, U, D).
+- Xáo trộn khối Rubik ngẫu nhiên.
+- Giao diện người dùng trực quan với PyQt5.
 
 ## Cấu trúc dự án
 - `main.py`: Tập tin chính để khởi động ứng dụng.
 - `rubik.py`: Chứa lớp RubikCube và các phương thức liên quan.
-- `README.md`: Tài liệu hướng dẫn và thông tin về dự án.
+- `rubik_widget.py`: Widget hiển thị khối Rubik với OpenGL.
+- `controls_widget.py`: Widget chứa các điều khiển người dùng.
 
 ## Hướng dẫn cài đặt
 1. Cài đặt Python và pip nếu chưa có.
 2. Cài đặt các thư viện cần thiết:
    ```bash
-   pip install pygame PyOpenGL
+   pip install -r requirements.txt
    ```
 
 ## Cách chạy ứng dụng
-- Chạy tập tin `main.py` để khởi động ứng dụng.
+- Chạy tập tin `main.py` để khởi động ứng dụng:
+   ```bash
+   python main.py
+   ```
 
-## Ghi chú
-- Dự án đang trong quá trình phát triển, vui lòng theo dõi để cập nhật các tính năng mới! 
+## Cách sử dụng
+- Kéo chuột trái để xoay toàn bộ khối Rubik.
+- Nhập các nước đi vào ô nhập liệu theo cú pháp chuẩn (ví dụ: "R U R' U'").
+- Nhấn "Apply Moves" để áp dụng các nước đi.
+- Nhấn "Reset" để đưa khối Rubik về trạng thái ban đầu.
+- Nhấn "Shuffle" để xáo trộn khối Rubik ngẫu nhiên. 
