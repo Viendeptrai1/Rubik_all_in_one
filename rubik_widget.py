@@ -31,6 +31,7 @@ class RubikWidget(QOpenGLWidget):
             # Animation completed, check queue
             if self.move_queue and not self.rubik.animating:
                 face, clockwise = self.move_queue.pop(0)
+                # Áp dụng nước đi kế tiếp
                 self.rubik.rotate_face(face, clockwise)
         self.rubik.draw_cube()
         self.update()  # Trigger repaint for animations
