@@ -118,13 +118,45 @@ class RubikCube:
     }
 
     # Định nghĩa các phép xoay chuẩn cho mỗi mặt
+    # - Tất cả các mặt sẽ xoay theo chiều kim đồng hồ nhìn từ mặt đó khi clockwise=True
+    # - Mặt LBD cần đảo ngược hướng khi áp dụng vào ma trận xoay
     FACE_ROTATIONS = {
-        'F': {'axis': 'z', 'pos': 2},  # Mặt trước (z=2)
-        'B': {'axis': 'z', 'pos': 0},  # Mặt sau (z=0)
-        'L': {'axis': 'x', 'pos': 0},  # Mặt trái (x=0)
-        'R': {'axis': 'x', 'pos': 2},  # Mặt phải (x=2)
-        'U': {'axis': 'y', 'pos': 2},  # Mặt trên (y=2)
-        'D': {'axis': 'y', 'pos': 0}   # Mặt dưới (y=0)
+        # Mặt trước (Front - z=max)
+        'F': {
+            'axis': 'z',  # Xoay quanh trục z
+            'pos': 2,     # Vị trí của mặt 
+            'invert': False  # Không cần đảo ngược hướng
+        },
+        # Mặt sau (Back - z=0)
+        'B': {
+            'axis': 'z',
+            'pos': 0,
+            'invert': True  # Cần đảo ngược hướng
+        },
+        # Mặt trái (Left - x=0)
+        'L': {
+            'axis': 'x',
+            'pos': 0,
+            'invert': True  # Cần đảo ngược hướng
+        },
+        # Mặt phải (Right - x=max)
+        'R': {
+            'axis': 'x',
+            'pos': 2,
+            'invert': False  # Không cần đảo ngược hướng
+        },
+        # Mặt trên (Up - y=max)
+        'U': {
+            'axis': 'y',
+            'pos': 2,
+            'invert': False  # Không cần đảo ngược hướng
+        },
+        # Mặt dưới (Down - y=0)
+        'D': {
+            'axis': 'y',
+            'pos': 0,
+            'invert': True  # Cần đảo ngược hướng
+        }
     }
 
     def __init__(self, size=3):
@@ -174,6 +206,9 @@ class RubikCube:
         self.animation_target = 0
         self.animation_speed = 5  # Độ nhanh của animation (độ/frame)
         self.animation_clockwise = True
+        
+        # Lưu góc xoay thực để cập nhật vị trí và màu
+        self.actual_rotation_angle = 0
 
     def _get_rotation_matrix(self, axis, angle_deg):
         """Tạo ma trận xoay cho một trục và góc cho trước"""
@@ -216,12 +251,21 @@ class RubikCube:
                     glPushMatrix()
                     # Áp dụng xoay animation theo định nghĩa trong FACE_ROTATIONS
                     rot = self.FACE_ROTATIONS[self.animation_face]
+                    
+                    # Tính toán góc hiển thị animation
+                    # Đảo chiều nếu mặt cần đảo ngược
+                    display_angle = self.animation_angle
+                    if rot['invert']:
+                        display_angle = -display_angle
+                        
+                    # Áp dụng phép xoay cho animation
                     if rot['axis'] == 'x':
-                        glRotatef(self.animation_angle, 1, 0, 0)
+                        glRotatef(display_angle, 1, 0, 0)
                     elif rot['axis'] == 'y':
-                        glRotatef(self.animation_angle, 0, 1, 0)
+                        glRotatef(display_angle, 0, 1, 0)
                     else:  # z
-                        glRotatef(self.animation_angle, 0, 0, 1)
+                        glRotatef(display_angle, 0, 0, 1)
+                    
                     piece.draw()
                     glPopMatrix()
                 else:
@@ -249,9 +293,58 @@ class RubikCube:
             
         self.animating = True
         self.animation_face = face
+        
+        # Đảo ngược clockwise để khớp với quy ước tiêu chuẩn
+        # Vì hiện tại tất cả các mặt đều bị xoay ngược hướng
+        clockwise = not clockwise
+        
         self.animation_clockwise = clockwise
+        
+        # Mọi mặt đều xoay theo chiều kim đồng hồ (clockwise=True)
+        # hoặc ngược chiều kim đồng hồ (clockwise=False) khi nhìn từ mặt đó
         self.animation_angle = 0
         self.animation_target = 90 if clockwise else -90
+                
+    def _complete_rotation(self):
+        """Hoàn thành phép xoay một mặt"""
+        if not self.animation_face:
+            return
+
+        face = self.animation_face
+        rot_info = self.FACE_ROTATIONS[face]
+        clockwise = self.animation_clockwise
+        
+        # Tính góc xoay thực sự trong logic 3D
+        # Đảo ngược chiều xoay nếu cần thiết cho các mặt L, B, D
+        actual_clockwise = clockwise
+        if rot_info['invert']:
+            actual_clockwise = not clockwise
+            
+        # Tính toán góc xoay trong không gian 3D
+        angle = 90 if actual_clockwise else -90
+        
+        # Lấy tất cả các mảnh trên mặt đang xoay
+        face_pieces = self._get_face_pieces(face)
+        
+        # Áp dụng ma trận xoay 
+        rot_matrix = self._get_rotation_matrix(rot_info['axis'], angle)
+        
+        # Xoay từng mảnh
+        center = np.array([1, 1, 1])
+        for piece in face_pieces:
+            # Cập nhật vị trí
+            pos = piece.position - center
+            new_pos = np.dot(rot_matrix, pos)
+            piece.position = np.round(new_pos + center).astype(int)
+            
+            # Cập nhật màu sắc - clockwise đã được điều chỉnh ở trên
+            piece.colors = self._rotate_colors(piece, rot_info['axis'], angle)
+        
+        # Reset trạng thái animation
+        self.animating = False
+        self.animation_face = None
+        self.animation_angle = 0
+        self.animation_target = 0
 
     def scramble(self, num_moves=20):
         """Xáo trộn Rubik ngẫu nhiên"""
@@ -341,9 +434,14 @@ class RubikCube:
         """Kiểm tra xem một mảnh có phải là cạnh không"""
         return len(piece.colors) == 2
 
-    def _rotate_colors(self, piece, axis, clockwise):
-        """Xoay màu sắc của một mảnh theo trục và chiều xoay"""
+    def _rotate_colors(self, piece, axis, angle):
+        """Xoay màu sắc của một mảnh theo trục và góc xoay"""
         new_colors = {}
+        
+        # Góc xoay đã được hiệu chỉnh, xử lý hướng xoay và ánh xạ màu sắc
+        # Góc dương (>0) sẽ xoay theo chiều kim đồng hồ nhìn từ hướng dương
+        # Góc âm (<0) sẽ xoay ngược chiều kim đồng hồ nhìn từ hướng dương
+        clockwise = angle > 0
         
         if axis == 'x':
             if clockwise:
@@ -369,36 +467,3 @@ class RubikCube:
                 new_colors[old_face] = color
 
         return new_colors
-
-    def _complete_rotation(self):
-        """Hoàn thành phép xoay một mặt"""
-        if not self.animation_face:
-            return
-
-        face = self.animation_face
-        rot_info = self.FACE_ROTATIONS[face]
-        clockwise = self.animation_clockwise
-        
-        # Lấy tất cả các mảnh trên mặt đang xoay
-        face_pieces = self._get_face_pieces(face)
-        
-        # Tính toán ma trận xoay
-        angle = 90 if clockwise else -90
-        rot_matrix = self._get_rotation_matrix(rot_info['axis'], angle)
-        
-        # Xoay từng mảnh
-        center = np.array([1, 1, 1])
-        for piece in face_pieces:
-            # Cập nhật vị trí
-            pos = piece.position - center
-            new_pos = np.dot(rot_matrix, pos)
-            piece.position = np.round(new_pos + center).astype(int)
-            
-            # Cập nhật màu sắc
-            piece.colors = self._rotate_colors(piece, rot_info['axis'], clockwise)
-        
-        # Reset trạng thái animation
-        self.animating = False
-        self.animation_face = None
-        self.animation_angle = 0
-        self.animation_target = 0
