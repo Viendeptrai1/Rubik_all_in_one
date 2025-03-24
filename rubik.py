@@ -363,12 +363,14 @@ class RubikCube:
     def _is_piece_on_face(self, piece, face):
         """Kiểm tra xem một khối có thuộc mặt đang xoay không"""
         pos = piece.position
-        if face == 'F': return pos[2] == self.size-1
-        if face == 'B': return pos[2] == 0
-        if face == 'L': return pos[0] == 0
-        if face == 'R': return pos[0] == self.size-1
-        if face == 'U': return pos[1] == self.size-1
-        if face == 'D': return pos[1] == 0
+        epsilon = 0.1  # Dung sai cho phép
+        
+        if face == 'F': return pos[2] > 0.5 - epsilon
+        if face == 'B': return pos[2] < -0.5 + epsilon
+        if face == 'L': return pos[0] < -0.5 + epsilon
+        if face == 'R': return pos[0] > 0.5 - epsilon
+        if face == 'U': return pos[1] > 0.5 - epsilon
+        if face == 'D': return pos[1] < -0.5 + epsilon
         return False
 
     def rotate_face(self, face, clockwise=True):
@@ -379,17 +381,15 @@ class RubikCube:
         self.animating = True
         self.animation_face = face
         
-        # Đảo ngược clockwise để khớp với quy ước tiêu chuẩn
-        # Vì hiện tại tất cả các mặt đều bị xoay ngược hướng
+        # Đảo ngược clockwise để khớp với quy ước của RubikState
+        # Lưu ý: Chúng ta không cần đảo ngược thêm cho các mặt 'invert' ở đây
+        # vì animation sẽ được hiển thị trực tiếp
         clockwise = not clockwise
         
         self.animation_clockwise = clockwise
-        
-        # Mọi mặt đều xoay theo chiều kim đồng hồ (clockwise=True)
-        # hoặc ngược chiều kim đồng hồ (clockwise=False) khi nhìn từ mặt đó
         self.animation_angle = 0
         self.animation_target = 90 if clockwise else -90
-                
+        
     def _complete_rotation(self):
         """Hoàn thành phép xoay một mặt"""
         if not self.animation_face:
@@ -771,22 +771,56 @@ class RubikCube2x2:
         
         # Lấy thông tin màu góc 
         original_colors = corner_colors[corner_idx]
-        faces = list(original_colors.keys())
         
-        # Áp dụng định hướng cho các màu
-        if orientation == 0:  # Không xoay
-            for face in faces:
-                colors[face] = self.COLORS[original_colors[face]]
-        elif orientation == 1:  # Xoay 1 lần
-            colors[faces[1]] = self.COLORS[original_colors[faces[0]]]
-            colors[faces[2]] = self.COLORS[original_colors[faces[1]]]
-            colors[faces[0]] = self.COLORS[original_colors[faces[2]]]
-        elif orientation == 2:  # Xoay 2 lần
-            colors[faces[2]] = self.COLORS[original_colors[faces[0]]]
-            colors[faces[0]] = self.COLORS[original_colors[faces[1]]]
-            colors[faces[1]] = self.COLORS[original_colors[faces[2]]]
+        # Khởi tạo mapping xoay dựa trên định hướng
+        # URF, ULF, ULB, URB có trục xoay UP, DRF, DLF, DLB, DRB có trục xoay DOWN
+        if corner_idx in [0, 1, 2, 3]:  # Góc trên (U)
+            cycle = ['U', 'R' if corner_idx in [0, 3] else 'L', 'F' if corner_idx in [0, 1] else 'B']
+        else:  # Góc dưới (D)
+            cycle = ['D', 'R' if corner_idx in [4, 7] else 'L', 'F' if corner_idx in [4, 5] else 'B']
+        
+        # Áp dụng định hướng
+        if orientation == 0:
+            # Không xoay
+            for face, color in original_colors.items():
+                colors[face] = self.COLORS[color]
+        elif orientation == 1:
+            # Xoay 1 lần theo chiều kim đồng hồ
+            colors[cycle[0]] = self.COLORS[original_colors[cycle[2]]]
+            colors[cycle[1]] = self.COLORS[original_colors[cycle[0]]]
+            colors[cycle[2]] = self.COLORS[original_colors[cycle[1]]]
+        elif orientation == 2:
+            # Xoay 2 lần theo chiều kim đồng hồ
+            colors[cycle[0]] = self.COLORS[original_colors[cycle[1]]]
+            colors[cycle[1]] = self.COLORS[original_colors[cycle[0]]]
+            colors[cycle[2]] = self.COLORS[original_colors[cycle[2]]]
             
         return colors
+
+    def _get_rotation_matrix(self, axis, angle_deg):
+        """Tạo ma trận xoay cho một trục và góc cho trước"""
+        angle = np.radians(angle_deg)
+        cos_a = np.cos(angle)
+        sin_a = np.sin(angle)
+        
+        if axis == 'x':
+            return np.array([
+                [1, 0, 0],
+                [0, cos_a, -sin_a],
+                [0, sin_a, cos_a]
+            ])
+        elif axis == 'y':
+            return np.array([
+                [cos_a, 0, sin_a],
+                [0, 1, 0],
+                [-sin_a, 0, cos_a]
+            ])
+        else:  # z
+            return np.array([
+                [cos_a, -sin_a, 0],
+                [sin_a, cos_a, 0],
+                [0, 0, 1]
+            ])
 
     def _is_piece_on_face(self, piece, face):
         """Kiểm tra xem một khối có thuộc mặt đang xoay không"""
@@ -809,7 +843,7 @@ class RubikCube2x2:
         self.animating = True
         self.animation_face = face
         
-        # Đảo ngược clockwise để khớp với quy ước tiêu chuẩn
+        # Đảo ngược clockwise để khớp với quy ước của RubikState
         clockwise = not clockwise
         
         self.animation_clockwise = clockwise
@@ -837,23 +871,28 @@ class RubikCube2x2:
         # Lấy tất cả các mảnh trên mặt đang xoay
         face_pieces = self._get_face_pieces(face)
         
-        # Phương pháp 1: Cập nhật trạng thái nội bộ
-        # Xác định nước đi tiêu chuẩn
+        # Áp dụng ma trận xoay 
+        rot_matrix = self._get_rotation_matrix(rot_info['axis'], angle)
+        
+        # Xoay từng mảnh
+        center = np.array([0, 0, 0])  # Tâm xoay ở giữa Rubik 2x2
+        for piece in face_pieces:
+            # Cập nhật vị trí
+            pos = piece.position - center
+            new_pos = np.dot(rot_matrix, pos)
+            piece.position = np.round(new_pos + center, 2)  # Làm tròn với 2 chữ số thập phân
+            
+            # Cập nhật màu sắc - clockwise đã được điều chỉnh ở trên
+            piece.colors = self._rotate_colors(piece, rot_info['axis'], angle)
+        
+        # Cập nhật trạng thái logic
         move = face
         if not clockwise:
             move = f"{face}'"
             
-        # Cập nhật trạng thái sử dụng apply_move từ RubikState
+        # Cập nhật trạng thái trong RubikState
         from RubikState.rubik_2x2 import MOVES as MOVES_2X2
         self.state = self.state.apply_move(move, MOVES_2X2)
-        
-        # Phương pháp 2: Cập nhật vị trí và màu sắc trực tiếp
-        for piece in face_pieces:
-            # Cập nhật màu sắc thông qua phép xoay
-            piece.colors = self._rotate_colors(piece, rot_info['axis'], angle)
-        
-        # Khởi tạo lại các khối dựa trên trạng thái mới
-        self._initialize_pieces()
         
         # Reset trạng thái animation
         self.animating = False
@@ -879,10 +918,11 @@ class RubikCube2x2:
                     rot = self.FACE_ROTATIONS[self.animation_face]
                     
                     # Tính toán góc hiển thị animation
+                    # Đảo ngược góc hiển thị cho các mặt 'invert'
                     display_angle = self.animation_angle
                     if rot['invert']:
                         display_angle = -display_angle
-                        
+                    
                     # Áp dụng phép xoay
                     if rot['axis'] == 'x':
                         glRotatef(display_angle, 1, 0, 0)
@@ -991,6 +1031,18 @@ class RubikCube2x2:
             ('Y', 'B', 'R'): 4,  # DRF
         }
         
+        # Màu mặt chuẩn để xác định định hướng
+        standard_colors = {
+            0: {'U': 'W', 'R': 'B', 'F': 'R'},  # URF (0)
+            1: {'U': 'W', 'L': 'G', 'F': 'R'},  # ULF (1)
+            2: {'U': 'W', 'L': 'G', 'B': 'O'},  # ULB (2)
+            3: {'U': 'W', 'R': 'B', 'B': 'O'},  # URB (3)
+            4: {'D': 'Y', 'R': 'B', 'F': 'R'},  # DRF (4) 
+            5: {'D': 'Y', 'L': 'G', 'F': 'R'},  # DLF (5)
+            6: {'D': 'Y', 'L': 'G', 'B': 'O'},  # DLB (6)
+            7: {'D': 'Y', 'R': 'B', 'B': 'O'},  # DRB (7)
+        }
+        
         # Xử lý góc - xác định vị trí và định hướng
         for piece in self.pieces:
             pos = tuple(piece.position)
@@ -999,26 +1051,43 @@ class RubikCube2x2:
                 pos_idx = corner_pos_map[pos]
                 
                 # Lấy màu cho mỗi mặt
-                colors = []
+                color_map = {}  # map face -> color
                 for face, color_tuple in piece.colors.items():
                     # Chuyển đổi màu RGB thành chữ cái
-                    if color_tuple == self.COLORS['W']: colors.append('W')
-                    elif color_tuple == self.COLORS['Y']: colors.append('Y')
-                    elif color_tuple == self.COLORS['R']: colors.append('R')
-                    elif color_tuple == self.COLORS['O']: colors.append('O')
-                    elif color_tuple == self.COLORS['G']: colors.append('G')
-                    elif color_tuple == self.COLORS['B']: colors.append('B')
+                    if color_tuple == self.COLORS['W']: color_map[face] = 'W'
+                    elif color_tuple == self.COLORS['Y']: color_map[face] = 'Y'
+                    elif color_tuple == self.COLORS['R']: color_map[face] = 'R'
+                    elif color_tuple == self.COLORS['O']: color_map[face] = 'O'
+                    elif color_tuple == self.COLORS['G']: color_map[face] = 'G'
+                    elif color_tuple == self.COLORS['B']: color_map[face] = 'B'
                 
-                # Sắp xếp màu để khớp với bản đồ
-                colors = tuple(sorted(colors))
+                # Tập hợp các màu để xác định khối góc
+                colors = tuple(sorted(color_map.values()))
                 
                 if colors in corner_color_map:
                     # Xác định góc nào đang ở vị trí này
                     corner_idx = corner_color_map[colors]
                     cp[pos_idx] = corner_idx
                     
-                    # TODO: Xác định định hướng (phức tạp hơn, cần kiểm tra màu cụ thể trên mỗi mặt)
-                    # Hiện tại giả sử định hướng là 0 cho tất cả
+                    # Xác định định hướng dựa trên vị trí của màu U/D
+                    standard = standard_colors[corner_idx]
+                    reference_face = 'U' if 'U' in standard else 'D'
+                    reference_color = standard[reference_face]
+                    
+                    # Tìm mặt hiện tại chứa màu tham chiếu (U/D)
+                    current_face = None
+                    for face, color in color_map.items():
+                        if color == reference_color:
+                            current_face = face
+                            break
+                    
+                    # Xác định định hướng
+                    if current_face == reference_face:
+                        co[pos_idx] = 0  # Không xoay
+                    elif current_face in ['F', 'B']:
+                        co[pos_idx] = 1  # Xoay 1 lần
+                    elif current_face in ['R', 'L']:
+                        co[pos_idx] = 2  # Xoay 2 lần
         
         # Trả về đối tượng Rubik2x2State
         return Rubik2x2State(cp, co)
