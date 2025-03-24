@@ -1,40 +1,42 @@
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
-from rubik import RubikCube
-
-class AlgorithmGroup(QGroupBox):
-    buttonClicked = pyqtSignal(str)  # Add new signal
-    
-    def __init__(self, title, algorithms, parent=None):
-        super().__init__(title, parent)
-        layout = QVBoxLayout()
-        
-        # Create scrollable area for algorithms
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll_content = QWidget()
-        scroll_layout = QVBoxLayout()
-        
-        for algo in algorithms:
-            btn = QPushButton(algo)
-            btn.setObjectName(algo)  # Set object name for identification
-            btn.setToolTip(algo)
-            # Connect directly to local slot
-            btn.clicked.connect(lambda checked, name=algo: self.buttonClicked.emit(name))
-            scroll_layout.addWidget(btn)
-        
-        scroll_layout.addStretch()
-        scroll_content.setLayout(scroll_layout)
-        scroll.setWidget(scroll_content)
-        layout.addWidget(scroll)
-        self.setLayout(layout)
+from rubik import RubikCube, RubikCube2x2
+from RubikState.rubik_chen import RubikState, SOLVED_STATE as SOLVED_STATE_3X3
+from RubikState.rubik_2x2 import Rubik2x2State, SOLVED_STATE as SOLVED_STATE_2X2
+import time
 
 class ControlsWidget(QWidget):
-    def __init__(self, rubik_widget, parent=None):
-        super().__init__(parent)
+    def __init__(self, rubik_widget):
+        super().__init__()
         self.rubik_widget = rubik_widget
+        self.init_ui()
+
+    def set_rubik_widget(self, rubik_widget):
+        """Cập nhật widget rubik hiện tại khi chuyển tab"""
+        self.rubik_widget = rubik_widget
+        # Cập nhật trạng thái nút theo widget mới
+        self.update_buttons()
+        # Cập nhật hiển thị trạng thái
+        self.update_state_display()
+
+    def update_buttons(self):
+        """Cập nhật trạng thái nút dựa trên widget hiện tại"""
+        # Không làm gì trong trường hợp này vì chúng ta không có nút solve_btn
+        pass
         
+    def update_state_display(self):
+        """Cập nhật hiển thị trạng thái Rubik"""
+        state = self.rubik_widget.rubik.get_state()
+        
+        if isinstance(self.rubik_widget.rubik, RubikCube2x2):
+            # Hiển thị đơn giản cho Rubik 2x2
+            self.state_display.setText("Trạng thái Rubik 2x2")
+        else:
+            # Hiển thị đơn giản cho Rubik 3x3
+            self.state_display.setText("Trạng thái Rubik 3x3")
+
+    def init_ui(self):
         # Main layout
         main_layout = QVBoxLayout()
         
@@ -59,33 +61,18 @@ class ControlsWidget(QWidget):
         buttons_layout.addWidget(reset_btn)
         buttons_layout.addWidget(shuffle_btn)
         main_layout.addLayout(buttons_layout)
-
-        # Create tab widget for algorithm groups
-        tabs = QTabWidget()
         
-        # Define algorithm groups - SIMPLIFIED
-        algorithm_groups = {
-            "Search": [
-                "Breadth-First Search", "A* Search"
-            ]
-        }
+        # Hiển thị trạng thái
+        state_group = QGroupBox("Trạng thái Rubik")
+        state_layout = QVBoxLayout()
+        self.state_display = QTextEdit()
+        self.state_display.setReadOnly(True)
+        state_layout.addWidget(self.state_display)
+        state_group.setLayout(state_layout)
+        main_layout.addWidget(state_group)
         
-        # Create tabs for each algorithm group
-        for group_name, algorithms in algorithm_groups.items():
-            algo_group = AlgorithmGroup(group_name, algorithms)
-            algo_group.buttonClicked.connect(self.on_algorithm_clicked)
-            tabs.addTab(algo_group, group_name)
-        
-        main_layout.addWidget(tabs)
-        
-        # Add description area
-        description_group = QGroupBox("Algorithm Description")
-        description_layout = QVBoxLayout()
-        self.description_text = QTextEdit()
-        self.description_text.setReadOnly(True)
-        description_layout.addWidget(self.description_text)
-        description_group.setLayout(description_layout)
-        main_layout.addWidget(description_group)
+        # Cập nhật hiển thị trạng thái ban đầu
+        self.update_state_display()
         
         main_layout.addStretch()
         self.setLayout(main_layout)
@@ -99,6 +86,9 @@ class ControlsWidget(QWidget):
         moves = self.parse_moves(moves_str)
         for face, clockwise in moves:
             self.rubik_widget.rubik.rotate_face(face, clockwise)
+            
+        # Cập nhật hiển thị trạng thái sau khi thực hiện các nước đi
+        self.update_state_display()
     
     def parse_moves(self, moves_str):
         """Chuyển đổi chuỗi moves thành list (face, clockwise)"""
@@ -123,25 +113,17 @@ class ControlsWidget(QWidget):
     
     def reset_cube(self):
         """Reset khối Rubik về trạng thái đã giải"""
-        self.rubik_widget.rubik = RubikCube()
-        self.description_text.clear()
+        if isinstance(self.rubik_widget.rubik, RubikCube2x2):
+            self.rubik_widget.rubik = RubikCube2x2()
+        else:
+            self.rubik_widget.rubik = RubikCube()
+        
+        # Cập nhật hiển thị trạng thái
+        self.update_state_display()
     
     def shuffle_cube(self):
         """Xáo trộn khối Rubik ngẫu nhiên"""
         self.rubik_widget.rubik.scramble(20)
-    
-    def on_algorithm_clicked(self, algo_name):
-        """Hiển thị mô tả thuật toán khi được chọn"""
-        descriptions = {
-            "Breadth-First Search": """Breadth-First Search khám phá tất cả các nước đi ở độ sâu hiện tại
-            trước khi chuyển sang mức độ sâu tiếp theo. Đảm bảo giải pháp tối ưu nhưng
-            tiêu tốn lượng bộ nhớ lớn.""",
-            
-            "A* Search": """Thuật toán A* sử dụng hàm heuristic để tìm đường
-            đi hứa hẹn nhất. Đảm bảo giải pháp tối ưu nếu heuristic là admissible."""
-        }
         
-        if algo_name in descriptions:
-            self.description_text.setText(descriptions[algo_name])
-        else:
-            self.description_text.setText("")
+        # Cập nhật hiển thị trạng thái sau khi xáo trộn
+        self.update_state_display()
