@@ -1,175 +1,179 @@
+# Thứ tự góc: 0=URF, 1=ULF, 2=ULB, 3=URB, 4=DRF, 5=DLF, 6=DLB, 7=DRB
+# Định hướng góc: 0=đúng hướng, 1=xoay 1 lần theo chiều kim đồng hồ, 2=xoay 2 lần
+# Thứ tự cạnh: 0=UR, 1=UF, 2=UL, 3=UB, 4=DR, 5=DF, 6=DL, 7=DB, 8=FR, 9=FL, 10=BL, 11=BR
+# Định hướng cạnh: 0=đúng hướng, 1=lật ngược
+
+import numpy as np
+
 class RubikState:
+    """
+    Lớp quản lý trạng thái Rubik Cube 3x3.
+    
+    Quy ước góc (cp - corner permutation):
+    0=URF, 1=ULF, 2=ULB, 3=URB, 4=DRF, 5=DLF, 6=DLB, 7=DRB
+    U=Up (trên), D=Down (dưới), R=Right (phải), L=Left (trái), F=Front (trước), B=Back (sau)
+    
+    Định hướng góc (co - corner orientation):
+    0=đúng hướng, 1=xoay theo chiều kim đồng hồ một lần, 2=xoay theo chiều kim đồng hồ hai lần
+    
+    Quy ước cạnh (ep - edge permutation):
+    0=UR, 1=UF, 2=UL, 3=UB, 4=DR, 5=DF, 6=DL, 7=DB, 8=FR, 9=FL, 10=BL, 11=BR
+    
+    Định hướng cạnh (eo - edge orientation):
+    0=đúng hướng, 1=lật ngược
+    """
     def __init__(self, cp, co, ep, eo):
-        # Chuyển đổi tất cả các danh sách thành tuple để tăng hiệu suất
-        self.cp = tuple(cp)  # Hoán vị góc
-        self.co = tuple(co)  # Định hướng góc
-        self.ep = tuple(ep)  # Hoán vị cạnh
-        self.eo = tuple(eo)  # Định hướng cạnh
+        # Sử dụng tuple thay vì list để có hiệu suất tốt hơn
+        self.cp = tuple(cp)  # Corner permutation (hoán vị góc)
+        self.co = tuple(co)  # Corner orientation (định hướng góc)
+        self.ep = tuple(ep)  # Edge permutation (hoán vị cạnh)
+        self.eo = tuple(eo)  # Edge orientation (định hướng cạnh)
 
     def __eq__(self, other):
-        # So sánh tuple trực tiếp, nhanh hơn list
+        if not isinstance(other, RubikState):
+            return False
         return (self.cp == other.cp and self.co == other.co and
                 self.ep == other.ep and self.eo == other.eo)
 
     def __hash__(self):
-        # Đơn giản hơn vì đã dùng tuple, không cần chuyển đổi
         return hash((self.cp, self.co, self.ep, self.eo))
 
     def copy(self):
-        # Không cần .copy() cho tuple vì tuple là immutable
         return RubikState(self.cp, self.co, self.ep, self.eo)
 
-# Trạng thái mục tiêu - sử dụng tuple thay vì list
+    def apply_move(self, move, moves_dict=None):
+        if moves_dict is None:
+            moves_dict = MOVES
+        move_def = moves_dict[move]
+        new_cp = tuple(self.cp[p] for p in move_def['cp'])
+        new_co = tuple((self.co[p] + o) % 3 for p, o in zip(move_def['cp'], move_def['co']))
+        new_ep = tuple(self.ep[p] for p in move_def['ep'])
+        new_eo = tuple((self.eo[p] + o) % 2 for p, o in zip(move_def['ep'], move_def['eo']))
+        return RubikState(new_cp, new_co, new_ep, new_eo)
+
+# Trạng thái đã giải (solved)
+# cp: Các góc được sắp xếp đúng vị trí (0-7)
+# co: Các góc được định hướng đúng (tất cả 0)
+# ep: Các cạnh được sắp xếp đúng vị trí (0-11)
+# eo: Các cạnh được định hướng đúng (tất cả 0)
 SOLVED_STATE = RubikState(
-    cp=(0, 1, 2, 3, 4, 5, 6, 7),
-    co=(0, 0, 0, 0, 0, 0, 0, 0),
-    ep=(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11),
-    eo=(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    tuple(range(8)),  # cp: Góc đúng vị trí
+    tuple([0] * 8),   # co: Góc đúng hướng
+    tuple(range(12)), # ep: Cạnh đúng vị trí
+    tuple([0] * 12)   # eo: Cạnh đúng hướng
 )
 
-# Định nghĩa các nước đi
+# Dictionary chứa các nước đi và tác động của chúng đến trạng thái
+# Mỗi nước đi định nghĩa:
+# - cp: Hoán vị góc (vị trí mới của mỗi góc sau khi xoay)
+# - co: Thay đổi hướng góc (0=không đổi, 1=xoay CW, 2=xoay CCW)
+# - ep: Hoán vị cạnh (vị trí mới của mỗi cạnh sau khi xoay)
+# - eo: Thay đổi hướng cạnh (0=không đổi, 1=lật ngược)
 MOVES = {
-    # Mặt phải (R)
+    # Ví dụ: R (xoay mặt phải theo chiều kim đồng hồ)
+    # Ảnh hưởng đến các góc 0=URF, 3=URB, 4=DRF, 7=DRB và cạnh 0=UR, 8=FR, 11=BR, 4=DR
     "R": {
-        "cp_perm": [3, 1, 2, 6, 0, 5, 4, 7],  # urf -> urb -> drb -> drf -> urf
-        "co_change": [1, 0, 0, 2, 2, 0, 1, 0],  # Định hướng thay đổi
-        "ep_perm": [11, 1, 2, 3, 8, 5, 6, 7, 4, 9, 10, 0],  # ur -> rb -> dr -> fr -> ur
-        "eo_change": [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1]
+        # Hoán vị góc: 0->4->7->3->0
+        "cp": (4, 1, 2, 0, 7, 5, 6, 3),
+        # Định hướng góc: 1=xoay CW góc 0,4,7,3
+        "co": (2, 0, 0, 1, 1, 0, 0, 2),
+        # Hoán vị cạnh: 0->8->11->4->0
+        "ep": (8, 1, 2, 3, 0, 5, 6, 7, 11, 9, 10, 4),
+        # Định hướng cạnh: không thay đổi (0)
+        "eo": (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     },
-    "L": {
-        "cp_perm": [0, 1, 5, 3, 4, 7, 6, 2],  # ulf -> dlb -> dlf -> ulf
-        "co_change": [0, 0, 1, 0, 0, 2, 0, 1],
-        "ep_perm": [0, 1, 9, 3, 4, 5, 10, 7, 8, 6, 2, 11],  # ul -> fl -> dl -> bl -> ul
-        "eo_change": [0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 1, 0]
-    },
-    "U": {
-        "cp_perm": [1, 2, 3, 0, 4, 5, 6, 7],  # urf -> ufr -> ulf -> ubr -> urf
-        "co_change": [0, 0, 0, 0, 0, 0, 0, 0],
-        "ep_perm": [1, 2, 3, 0, 4, 5, 6, 7, 8, 9, 10, 11],  # ur -> uf -> ul -> ub -> ur
-        "eo_change": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-    },
-    "D": {
-        "cp_perm": [0, 1, 2, 3, 7, 4, 5, 6],  # dfr -> dlf -> dlb -> dbr -> dfr
-        "co_change": [0, 0, 0, 0, 0, 0, 0, 0],
-        "ep_perm": [0, 1, 2, 3, 5, 6, 7, 4, 8, 9, 10, 11],  # dr -> df -> dl -> db -> dr
-        "eo_change": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-    },
-    "F": {
-        "cp_perm": [1, 4, 2, 3, 7, 5, 6, 0],  # urf -> ufr -> dfr -> dlf -> urf
-        "co_change": [1, 2, 0, 0, 1, 0, 0, 2],
-        "ep_perm": [0, 8, 2, 3, 4, 9, 6, 7, 5, 1, 10, 11],  # uf -> fr -> df -> fl -> uf
-        "eo_change": [0, 1, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0]
-    },
-    "B": {
-        "cp_perm": [0, 1, 3, 6, 4, 2, 5, 7],  # ubr -> dbr -> dlb -> ulf -> ubr
-        "co_change": [0, 0, 2, 1, 0, 1, 2, 0],
-        "ep_perm": [0, 1, 2, 10, 4, 5, 6, 11, 8, 9, 7, 3],  # ub -> bl -> db -> br -> ub
-        "eo_change": [0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 1]
-    },
+    
+    # R': Xoay mặt phải ngược chiều kim đồng hồ
     "R'": {
-        "cp_perm": [4, 1, 2, 0, 6, 5, 3, 7],
-        "co_change": [2, 0, 0, 1, 1, 0, 2, 0],
-        "ep_perm": [0, 1, 2, 3, 8, 5, 6, 7, 4, 9, 10, 11],
-        "eo_change": [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1]
+        "cp": (3, 1, 2, 7, 0, 5, 6, 4),
+        "co": (1, 0, 0, 2, 2, 0, 0, 1),
+        "ep": (4, 1, 2, 3, 11, 5, 6, 7, 0, 9, 10, 8),
+        "eo": (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     },
+    
+    # L: Xoay mặt trái theo chiều kim đồng hồ
+    "L": {
+        "cp": (0, 5, 1, 3, 4, 6, 2, 7),
+        "co": (0, 1, 2, 0, 0, 2, 1, 0),
+        "ep": (0, 1, 9, 3, 4, 5, 10, 7, 8, 2, 6, 11),
+        "eo": (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    },
+    
+    # L': Xoay mặt trái ngược chiều kim đồng hồ
     "L'": {
-        "cp_perm": [0, 1, 7, 3, 4, 2, 6, 5],
-        "co_change": [0, 0, 2, 0, 0, 1, 0, 2],
-        "ep_perm": [0, 1, 10, 3, 4, 5, 9, 7, 8, 2, 6, 11],
-        "eo_change": [0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 1, 0]
+        "cp": (0, 2, 6, 3, 4, 1, 5, 7),
+        "co": (0, 2, 1, 0, 0, 1, 2, 0),
+        "ep": (0, 1, 6, 3, 4, 5, 10, 7, 8, 9, 2, 11),
+        "eo": (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     },
-    "U'": {
-        "cp_perm": [3, 0, 1, 2, 4, 5, 6, 7],
-        "co_change": [0, 0, 0, 0, 0, 0, 0, 0],
-        "ep_perm": [3, 0, 1, 2, 4, 5, 6, 7, 8, 9, 10, 11],
-        "eo_change": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    
+    # F: Xoay mặt trước theo chiều kim đồng hồ
+    "F": {
+        "cp": (1, 5, 2, 3, 0, 4, 6, 7),
+        "co": (1, 2, 0, 0, 2, 1, 0, 0),
+        "ep": (0, 5, 2, 3, 4, 9, 6, 7, 1, 8, 10, 11),
+        "eo": (0, 1, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0)
     },
-    "B'": {
-        "cp_perm": [0, 1, 5, 2, 4, 6, 3, 7],
-        "co_change": [0, 0, 1, 2, 0, 2, 1, 0],
-        "ep_perm": [0, 1, 2, 11, 4, 5, 6, 10, 8, 9, 3, 7],
-        "eo_change": [0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 1]
-    },
-    "D'": {
-        "cp_perm": [0, 1, 2, 3, 5, 6, 7, 4],
-        "co_change": [0, 0, 0, 0, 0, 0, 0, 0],
-        "ep_perm": [0, 1, 2, 3, 7, 4, 5, 6, 8, 9, 10, 11],
-        "eo_change": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-    },
+    
+    # F': Xoay mặt trước ngược chiều kim đồng hồ
     "F'": {
-        "cp_perm": [7, 0, 2, 3, 1, 5, 6, 4],
-        "co_change": [2, 1, 0, 0, 2, 0, 0, 1],
-        "ep_perm": [0, 9, 2, 3, 4, 8, 6, 7, 1, 5, 10, 11],
-        "eo_change": [0, 1, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0]
+        "cp": (4, 0, 2, 3, 5, 1, 6, 7),
+        "co": (2, 1, 0, 0, 1, 2, 0, 0),
+        "ep": (0, 8, 2, 3, 4, 1, 6, 7, 9, 5, 10, 11),
+        "eo": (0, 1, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0)
     },
-    "R2": {
-        "cp_perm": [6, 1, 2, 4, 3, 5, 0, 7],  # Thực hiện R hai lần
-        "co_change": [0, 0, 0, 0, 0, 0, 0, 0],  # Tổng thay đổi định hướng là 0
-        "ep_perm": [4, 1, 2, 3, 0, 5, 6, 7, 11, 9, 10, 8],
-        "eo_change": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    
+    # B: Xoay mặt sau theo chiều kim đồng hồ
+    "B": {
+        "cp": (0, 1, 3, 7, 4, 5, 2, 6),
+        "co": (0, 0, 1, 2, 0, 0, 2, 1),
+        "ep": (0, 1, 2, 10, 4, 5, 6, 11, 8, 9, 3, 7),
+        "eo": (0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 1)
     },
-
-    # Mặt trái (L)
     
-    "L2": {
-        "cp_perm": [0, 1, 5, 3, 4, 7, 6, 2],
-        "co_change": [0, 0, 0, 0, 0, 0, 0, 0],
-        "ep_perm": [0, 1, 6, 3, 4, 5, 2, 7, 8, 10, 9, 11],
-        "eo_change": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    # B': Xoay mặt sau ngược chiều kim đồng hồ
+    "B'": {
+        "cp": (0, 1, 6, 2, 4, 5, 7, 3),
+        "co": (0, 0, 2, 1, 0, 0, 1, 2),
+        "ep": (0, 1, 2, 7, 4, 5, 6, 10, 8, 9, 11, 3),
+        "eo": (0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 1)
     },
-
-    # Mặt trên (U)
     
-    "U2": {
-        "cp_perm": [2, 3, 0, 1, 4, 5, 6, 7],
-        "co_change": [0, 0, 0, 0, 0, 0, 0, 0],
-        "ep_perm": [2, 3, 0, 1, 4, 5, 6, 7, 8, 9, 10, 11],
-        "eo_change": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    # U: Xoay mặt trên theo chiều kim đồng hồ
+    "U": {
+        "cp": (3, 0, 1, 2, 4, 5, 6, 7),
+        "co": (0, 0, 0, 0, 0, 0, 0, 0),
+        "ep": (3, 0, 1, 2, 4, 5, 6, 7, 8, 9, 10, 11),
+        "eo": (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     },
-
-    # Mặt dưới (D)
     
-    
-    "D2": {
-        "cp_perm": [0, 1, 2, 3, 6, 7, 4, 5],
-        "co_change": [0, 0, 0, 0, 0, 0, 0, 0],
-        "ep_perm": [0, 1, 2, 3, 6, 7, 4, 5, 8, 9, 10, 11],
-        "eo_change": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    # U': Xoay mặt trên ngược chiều kim đồng hồ
+    "U'": {
+        "cp": (1, 2, 3, 0, 4, 5, 6, 7),
+        "co": (0, 0, 0, 0, 0, 0, 0, 0),
+        "ep": (1, 2, 3, 0, 4, 5, 6, 7, 8, 9, 10, 11),
+        "eo": (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     },
-
-    # Mặt trước (F)
     
-    "F2": {
-        "cp_perm": [4, 7, 2, 3, 0, 5, 6, 1],
-        "co_change": [0, 0, 0, 0, 0, 0, 0, 0],
-        "ep_perm": [0, 5, 2, 3, 4, 1, 6, 7, 9, 8, 10, 11],
-        "eo_change": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    # D: Xoay mặt dưới theo chiều kim đồng hồ
+    "D": {
+        "cp": (0, 1, 2, 3, 5, 6, 7, 4),
+        "co": (0, 0, 0, 0, 0, 0, 0, 0),
+        "ep": (0, 1, 2, 3, 7, 4, 5, 6, 8, 9, 10, 11),
+        "eo": (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     },
-
-    # Mặt sau (B)
     
-    
-    "B2": {
-        "cp_perm": [0, 1, 6, 5, 4, 3, 2, 7],
-        "co_change": [0, 0, 0, 0, 0, 0, 0, 0],
-        "ep_perm": [0, 1, 2, 7, 4, 5, 6, 3, 8, 9, 11, 10],
-        "eo_change": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    # D': Xoay mặt dưới ngược chiều kim đồng hồ 
+    "D'": {
+        "cp": (0, 1, 2, 3, 7, 4, 5, 6),
+        "co": (0, 0, 0, 0, 0, 0, 0, 0),
+        "ep": (0, 1, 2, 3, 5, 6, 7, 4, 8, 9, 10, 11),
+        "eo": (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     }
 }
 
+# Danh sách tên các nước đi 
 MOVE_NAMES = list(MOVES.keys())
-
-# Hàm áp dụng một nước đi
-def apply_move(state, move):
-    move_data = MOVES[move]
-    
-    # Tạo tuple mới trực tiếp, bỏ qua bước tạo list
-    new_cp = tuple(state.cp[move_data["cp_perm"][i]] for i in range(8))
-    new_co = tuple((state.co[move_data["cp_perm"][i]] + move_data["co_change"][i]) % 3 for i in range(8))
-    new_ep = tuple(state.ep[move_data["ep_perm"][i]] for i in range(12))
-    new_eo = tuple((state.eo[move_data["ep_perm"][i]] + move_data["eo_change"][i]) % 2 for i in range(12))
-    
-    return RubikState(new_cp, new_co, new_ep, new_eo)
 
 def calculate_parity(perm):
     """Tính dấu hoán vị (chẵn: 0, lẻ: 1)"""

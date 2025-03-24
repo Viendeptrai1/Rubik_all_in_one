@@ -1,124 +1,158 @@
+# Thứ tự góc trong Rubik 2x2 (tương tự Rubik 3x3):
+# 0=URF: Góc Trên-Phải-Trước (Up-Right-Front)
+# 1=ULF: Góc Trên-Trái-Trước (Up-Left-Front)
+# 2=ULB: Góc Trên-Trái-Sau (Up-Left-Back)
+# 3=URB: Góc Trên-Phải-Sau (Up-Right-Back)
+# 4=DRF: Góc Dưới-Phải-Trước (Down-Right-Front)
+# 5=DLF: Góc Dưới-Trái-Trước (Down-Left-Front)
+# 6=DLB: Góc Dưới-Trái-Sau (Down-Left-Back)
+# 7=DRB: Góc Dưới-Phải-Sau (Down-Right-Back)
+#
+# Định hướng góc:
+# 0 = đúng hướng
+# 1 = xoay 1 lần theo chiều kim đồng hồ nhìn từ góc
+# 2 = xoay 2 lần theo chiều kim đồng hồ nhìn từ góc
+
 class Rubik2x2State:
+    """
+    Lớp quản lý trạng thái Rubik Cube 2x2.
+    
+    Quy ước góc (cp - corner permutation):
+    0=URF, 1=ULF, 2=ULB, 3=URB, 4=DRF, 5=DLF, 6=DLB, 7=DRB
+    U=Up (trên), D=Down (dưới), R=Right (phải), L=Left (trái), F=Front (trước), B=Back (sau)
+    
+    Định hướng góc (co - corner orientation):
+    0=đúng hướng, 1=xoay theo chiều kim đồng hồ một lần, 2=xoay theo chiều kim đồng hồ hai lần
+    
+    Rubik 2x2 chỉ có 8 góc (không có cạnh và tâm)
+    """
     def __init__(self, cp, co):
-        # Chuyển đổi tất cả các danh sách thành tuple để tăng hiệu suất
-        self.cp = tuple(cp)  # Hoán vị góc (corner permutation)
-        self.co = tuple(co)  # Định hướng góc (corner orientation)
+        # Sử dụng tuple thay vì list để có hiệu suất tốt hơn
+        self.cp = tuple(cp)  # Corner permutation (hoán vị góc)
+        self.co = tuple(co)  # Corner orientation (định hướng góc)
 
     def __eq__(self, other):
-        # So sánh tuple trực tiếp, nhanh hơn list
+        if not isinstance(other, Rubik2x2State):
+            return False
         return self.cp == other.cp and self.co == other.co
 
     def __hash__(self):
-        # Đơn giản hơn vì đã dùng tuple, không cần chuyển đổi
         return hash((self.cp, self.co))
 
     def copy(self):
-        # Không cần .copy() cho tuple vì tuple là immutable
         return Rubik2x2State(self.cp, self.co)
+        
+    def apply_move(self, move, moves_dict=None):
+        """
+        Áp dụng một nước đi và trả về trạng thái mới.
+        - move: Nước đi cần áp dụng (e.g. 'R', 'U', 'F', etc.)
+        - moves_dict: Từ điển chứa định nghĩa các nước đi, mặc định là MOVES
+        """
+        if moves_dict is None:
+            moves_dict = MOVES
+        move_def = moves_dict[move]
+        
+        # Lấy khối từ vị trí cũ đặt vào vị trí mới
+        new_cp = tuple(self.cp[move_def['cp'][i]] for i in range(8))
+        
+        # Kết hợp định hướng cũ với thay đổi định hướng
+        new_co = tuple((self.co[move_def['cp'][i]] + move_def['co'][i]) % 3 for i in range(8))
+        
+        return Rubik2x2State(new_cp, new_co)
 
-# Trạng thái mục tiêu - sử dụng tuple thay vì list
+# Trạng thái đã giải (solved)
+# cp: Các góc được sắp xếp đúng vị trí (0-7)
+# co: Các góc được định hướng đúng (tất cả 0)
 SOLVED_STATE = Rubik2x2State(
-    cp=(0, 1, 2, 3, 4, 5, 6, 7),  # Hoán vị góc ban đầu
-    co=(0, 0, 0, 0, 0, 0, 0, 0)   # Định hướng góc ban đầu
+    tuple(range(8)),  # cp: Góc đúng vị trí
+    tuple([0] * 8)    # co: Góc đúng hướng
 )
 
 # Định nghĩa các nước đi cho rubik 2x2
-# Mặc dù rubik 2x2 có cấu trúc đơn giản hơn, chúng ta vẫn giữ nguyên các định nghĩa
-# về góc để đảm bảo tính nhất quán với mô hình 3x3
+# Trong Rubik 2x2, chỉ có các khối góc (8 góc), không có cạnh và tâm
 MOVES = {
-    # Mặt phải (R)
+    # R: Xoay mặt phải theo chiều kim đồng hồ
+    # Ảnh hưởng đến các góc 0=URF, 3=URB, 4=DRF, 7=DRB
     "R": {
-        "cp_perm": [0, 1, 6, 3, 4, 5, 2, 7],  # URF->DRF->DRB->URB->URF
-        "co_change": [0, 0, 1, 0, 0, 0, 2, 0],  # Định hướng thay đổi
+        # Vị trí 0 lấy khối từ vị trí 4, vị trí 3 lấy khối từ vị trí 0,
+        # vị trí 4 lấy khối từ vị trí 7, vị trí 7 lấy khối từ vị trí 3
+        "cp": (4, 1, 2, 0, 7, 5, 6, 3),
+        # Thay đổi định hướng khi khối di chuyển
+        "co": (2, 0, 0, 1, 1, 0, 0, 2)
     },
-    # Mặt trái (L)
-    "L": {
-        "cp_perm": [0, 1, 2, 3, 5, 4, 6, 7],  # ULF->ULB->DLB->DLF->ULF
-        "co_change": [0, 0, 0, 0, 2, 1, 0, 0],
-    },
-    # Mặt trên (U)
-    "U": {
-        "cp_perm": [3, 0, 1, 2, 4, 5, 6, 7],  # URF->ULF->ULB->URB->URF
-        "co_change": [0, 0, 0, 0, 0, 0, 0, 0],
-    },
-    # Mặt dưới (D)
-    "D": {
-        "cp_perm": [0, 1, 2, 3, 7, 4, 5, 6],  # DRF->DLF->DLB->DRB->DRF
-        "co_change": [0, 0, 0, 0, 0, 0, 0, 0],
-    },
-    # Mặt trước (F)
-    "F": {
-        "cp_perm": [1, 5, 2, 3, 0, 4, 6, 7],  # URF->DLF->ULF->URF
-        "co_change": [1, 2, 0, 0, 2, 1, 0, 0],
-    },
-    # Mặt sau (B)
-    "B": {
-        "cp_perm": [0, 1, 2, 7, 4, 5, 3, 6],  # URB->DRB->DLB->ULB->URB
-        "co_change": [0, 0, 0, 1, 0, 0, 2, 2],
-    },
-    # Nước đi ngược
+    
+    # R': Xoay mặt phải ngược chiều kim đồng hồ
     "R'": {
-        "cp_perm": [0, 1, 6, 3, 4, 5, 2, 7],  # URB->URF->DRF->DRB->URB
-        "co_change": [0, 0, 2, 0, 0, 0, 1, 0],
+        # Vị trí 0 lấy khối từ vị trí 3, vị trí 3 lấy khối từ vị trí 7,
+        # vị trí 4 lấy khối từ vị trí 0, vị trí 7 lấy khối từ vị trí 4
+        "cp": (3, 1, 2, 7, 0, 5, 6, 4),
+        "co": (1, 0, 0, 2, 2, 0, 0, 1)
     },
+    
+    # L: Xoay mặt trái theo chiều kim đồng hồ
+    "L": {
+        # Vị trí 1 lấy khối từ vị trí 5, vị trí 2 lấy khối từ vị trí 1,
+        # vị trí 5 lấy khối từ vị trí 6, vị trí 6 lấy khối từ vị trí 2
+        "cp": (0, 5, 1, 3, 4, 6, 2, 7),
+        "co": (0, 1, 2, 0, 0, 2, 1, 0)
+    },
+    
+    # L': Xoay mặt trái ngược chiều kim đồng hồ
     "L'": {
-        "cp_perm": [0, 1, 2, 3, 5, 4, 6, 7],  # ULF->DLF->DLB->ULB->ULF
-        "co_change": [0, 0, 0, 0, 1, 2, 0, 0],
+        "cp": (0, 2, 6, 3, 4, 1, 5, 7),
+        "co": (0, 2, 1, 0, 0, 1, 2, 0)
     },
-    "U'": {
-        "cp_perm": [1, 2, 3, 0, 4, 5, 6, 7],  # URF->URB->ULB->ULF->URF
-        "co_change": [0, 0, 0, 0, 0, 0, 0, 0],
+    
+    # F: Xoay mặt trước theo chiều kim đồng hồ
+    "F": {
+        "cp": (1, 5, 2, 3, 0, 4, 6, 7),
+        "co": (1, 2, 0, 0, 2, 1, 0, 0)
     },
-    "D'": {
-        "cp_perm": [0, 1, 2, 3, 5, 6, 7, 4],  # DRF->DRB->DLB->DLF->DRF
-        "co_change": [0, 0, 0, 0, 0, 0, 0, 0],
-    },
+    
+    # F': Xoay mặt trước ngược chiều kim đồng hồ
     "F'": {
-        "cp_perm": [4, 0, 2, 3, 5, 1, 6, 7],  # URF->ULF->DLF->DRF->URF
-        "co_change": [2, 1, 0, 0, 1, 2, 0, 0],
+        "cp": (4, 0, 2, 3, 5, 1, 6, 7),
+        "co": (2, 1, 0, 0, 1, 2, 0, 0)
     },
+    
+    # B: Xoay mặt sau theo chiều kim đồng hồ
+    "B": {
+        "cp": (0, 1, 3, 7, 4, 5, 2, 6),
+        "co": (0, 0, 1, 2, 0, 0, 2, 1)
+    },
+    
+    # B': Xoay mặt sau ngược chiều kim đồng hồ
     "B'": {
-        "cp_perm": [0, 1, 2, 6, 4, 5, 7, 3],  # URB->ULB->DLB->DRB->URB
-        "co_change": [0, 0, 0, 2, 0, 0, 1, 2],
+        "cp": (0, 1, 6, 2, 4, 5, 7, 3),
+        "co": (0, 0, 2, 1, 0, 0, 1, 2)
     },
-    # Nước đi 180 độ (2 lần)
-    "R2": {
-        "cp_perm": [0, 1, 2, 6, 4, 5, 3, 7],
-        "co_change": [0, 0, 0, 0, 0, 0, 0, 0],
+    
+    # U: Xoay mặt trên theo chiều kim đồng hồ
+    "U": {
+        "cp": (3, 0, 1, 2, 4, 5, 6, 7),
+        "co": (0, 0, 0, 0, 0, 0, 0, 0)
     },
-    "L2": {
-        "cp_perm": [0, 1, 2, 3, 4, 5, 6, 7],  # Về vị trí ban đầu nhưng hoán vị
-        "co_change": [0, 0, 0, 0, 0, 0, 0, 0],
+    
+    # U': Xoay mặt trên ngược chiều kim đồng hồ
+    "U'": {
+        "cp": (1, 2, 3, 0, 4, 5, 6, 7),
+        "co": (0, 0, 0, 0, 0, 0, 0, 0)
     },
-    "U2": {
-        "cp_perm": [2, 3, 0, 1, 4, 5, 6, 7],
-        "co_change": [0, 0, 0, 0, 0, 0, 0, 0],
+    
+    # D: Xoay mặt dưới theo chiều kim đồng hồ
+    "D": {
+        "cp": (0, 1, 2, 3, 5, 6, 7, 4),
+        "co": (0, 0, 0, 0, 0, 0, 0, 0)
     },
-    "D2": {
-        "cp_perm": [0, 1, 2, 3, 6, 7, 4, 5],
-        "co_change": [0, 0, 0, 0, 0, 0, 0, 0],
-    },
-    "F2": {
-        "cp_perm": [5, 4, 2, 3, 1, 0, 6, 7],
-        "co_change": [0, 0, 0, 0, 0, 0, 0, 0],
-    },
-    "B2": {
-        "cp_perm": [0, 1, 2, 7, 4, 5, 6, 3],
-        "co_change": [0, 0, 0, 0, 0, 0, 0, 0],
+    
+    # D': Xoay mặt dưới ngược chiều kim đồng hồ
+    "D'": {
+        "cp": (0, 1, 2, 3, 7, 4, 5, 6),
+        "co": (0, 0, 0, 0, 0, 0, 0, 0)
     }
 }
 
 MOVE_NAMES = list(MOVES.keys())
-
-# Hàm áp dụng một nước đi
-def apply_move(state, move):
-    move_data = MOVES[move]
-    
-    # Tạo tuple mới trực tiếp, bỏ qua bước tạo list
-    new_cp = tuple(state.cp[move_data["cp_perm"][i]] for i in range(8))
-    new_co = tuple((state.co[move_data["cp_perm"][i]] + move_data["co_change"][i]) % 3 for i in range(8))
-    
-    return Rubik2x2State(new_cp, new_co)
 
 def calculate_parity(perm):
     """Tính dấu hoán vị (chẵn: 0, lẻ: 1)"""
