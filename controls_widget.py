@@ -1,7 +1,8 @@
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
-from rubik import RubikCube, RubikCube2x2
+from rubik_3x3 import RubikCube
+from rubik_2x2 import RubikCube2x2
 from RubikState.rubik_chen import RubikState, SOLVED_STATE as SOLVED_STATE_3X3
 from RubikState.rubik_2x2 import Rubik2x2State, SOLVED_STATE as SOLVED_STATE_2X2
 import time

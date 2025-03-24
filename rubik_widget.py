@@ -2,7 +2,8 @@ from PyQt5.QtWidgets import QOpenGLWidget
 from PyQt5.QtCore import Qt, QPoint
 from OpenGL.GL import *
 from OpenGL.GLU import *
-from rubik import RubikCube, RubikCube2x2
+from rubik_3x3 import RubikCube
+from rubik_2x2 import RubikCube2x2
 
 class RubikWidget(QOpenGLWidget):
     def __init__(self, parent=None):
