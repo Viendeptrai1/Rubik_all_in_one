@@ -21,7 +21,11 @@ class GeneticAlgorithm(SolverAlgorithm):
         return """Genetic Algorithm evolves a population of move sequences,
         using mutation and crossover to find better solutions."""
 
-    def solve(self):
+    def solve(self, progress_callback=None):
+        # Lưu callback để cập nhật tiến trình
+        if progress_callback:
+            self.set_progress_callback(progress_callback)
+            
         start_time = time.time()
         
         # Use parallel solver if available

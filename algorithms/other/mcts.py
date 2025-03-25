@@ -28,11 +28,19 @@ class MonteCarloTreeSearch(SolverAlgorithm):
         return """Monte Carlo Tree Search explores moves by simulating random
         games and focusing on promising sequences."""
 
-    def solve(self):
+    def solve(self, progress_callback=None):
+        # Lưu callback để cập nhật tiến trình
+        if progress_callback:
+            self.set_progress_callback(progress_callback)
+            
         start_time = time.time()
         root = Node(self.cube)
         
-        for _ in range(self.iterations):
+        for i in range(self.iterations):
+            # Cập nhật tiến trình
+            if i % 10 == 0:
+                self.update_progress(i, self.iterations)
+                
             node = self._select(root)
             child = self._expand(node)
             result = self._simulate(child)

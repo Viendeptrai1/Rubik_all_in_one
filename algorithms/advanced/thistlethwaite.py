@@ -37,7 +37,11 @@ class ThistlethwaiteAlgorithm(SolverAlgorithm):
         G2→G3: Get to half-turn only positions
         G3→G4: Solve with half-turns"""
     
-    def solve(self):
+    def solve(self, progress_callback=None):
+        # Lưu callback để cập nhật tiến trình
+        if progress_callback:
+            self.set_progress_callback(progress_callback)
+            
         # Initialize pattern databases if needed - now done in solve() rather than __init__
         if not ThistlethwaiteAlgorithm._pattern_database_initialized:
             self._init_pattern_databases()

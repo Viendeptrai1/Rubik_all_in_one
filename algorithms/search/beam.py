@@ -16,7 +16,11 @@ class BeamSearch(SolverAlgorithm):
         return """Beam Search is like BFS but only keeps the best w states at each level.
         Not guaranteed to find optimal solution but uses less memory."""
 
-    def solve(self):
+    def solve(self, progress_callback=None):
+        # Lưu callback để cập nhật tiến trình
+        if progress_callback:
+            self.set_progress_callback(progress_callback)
+            
         start_time = time.time()
         beam = [(self._heuristic(self.cube), self.cube, [])]
         

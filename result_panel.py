@@ -14,16 +14,31 @@ class ResultPanel(QWidget):
         
         # Label hiển thị tên thuật toán đang chạy
         self.algo_label = QLabel("No algorithm running")
+        # Tăng kích thước font
+        font = self.algo_label.font()
+        font.setPointSize(12)
+        font.setBold(True)
+        self.algo_label.setFont(font)
+        self.algo_label.setAlignment(Qt.AlignCenter)
         left_layout.addWidget(self.algo_label)
         
         # Label cho loading animation
         self.loading_label = QLabel()
+        # Tăng kích thước font
+        font = self.loading_label.font()
+        font.setPointSize(11)
+        self.loading_label.setFont(font)
+        self.loading_label.setAlignment(Qt.AlignCenter)
         self.loading_label.hide()
         left_layout.addWidget(self.loading_label)
         
         # Text area để hiển thị kết quả
         self.result_text = QTextEdit()
         self.result_text.setReadOnly(True)
+        # Tăng kích thước font
+        font = self.result_text.font()
+        font.setPointSize(11)
+        self.result_text.setFont(font)
         left_layout.addWidget(self.result_text)
         
         # Add performance metrics display
@@ -31,8 +46,8 @@ class ResultPanel(QWidget):
         metrics_layout = QVBoxLayout()
         self.metrics_text = QTextEdit()
         self.metrics_text.setReadOnly(True)
-        self.metrics_text.setMaximumHeight(100)
-        self.metrics_text.setStyleSheet("font-family: monospace; font-size: 9pt;")
+        self.metrics_text.setMaximumHeight(120)  # Tăng chiều cao từ 100 lên 120
+        self.metrics_text.setStyleSheet("font-family: monospace; font-size: 10pt;")  # Tăng cỡ chữ từ 9pt lên 10pt
         metrics_layout.addWidget(self.metrics_text)
         self.metrics_group.setLayout(metrics_layout)
         self.metrics_group.hide()
@@ -44,6 +59,7 @@ class ResultPanel(QWidget):
         self.progress_bar.setValue(0)
         self.progress_bar.setTextVisible(True)
         self.progress_bar.setFormat("%v/%m (%p%)")
+        self.progress_bar.setMinimumHeight(20)  # Đảm bảo progress bar đủ cao
         self.progress_bar.hide()
         left_layout.addWidget(self.progress_bar)
         
@@ -60,7 +76,7 @@ class ResultPanel(QWidget):
         # Text area for algorithm info
         self.info_text = QTextEdit()
         self.info_text.setReadOnly(True)
-        self.info_text.setStyleSheet("background-color: #f5f5f5;")
+        self.info_text.setStyleSheet("background-color: #f5f5f5; font-size: 11pt;")  # Tăng cỡ chữ
         info_box_layout.addWidget(self.info_text)
         
         info_group.setLayout(info_box_layout)
@@ -77,10 +93,18 @@ class ResultPanel(QWidget):
         
         # Hiển thị bước hiện tại
         self.current_step_label = QLabel("Steps: 0/0")
+        # Tăng kích thước font
+        font = self.current_step_label.font()
+        font.setPointSize(11)
+        self.current_step_label.setFont(font)
         solution_layout.addWidget(self.current_step_label)
         
         # Current move display
         self.current_move_label = QLabel("Current move: None")
+        # Tăng kích thước font
+        font = self.current_move_label.font()
+        font.setPointSize(11)
+        self.current_move_label.setFont(font)
         solution_layout.addWidget(self.current_move_label)
         
         # Button controls
@@ -88,10 +112,20 @@ class ResultPanel(QWidget):
         
         self.next_step_btn = QPushButton("Next Step")
         self.next_step_btn.setEnabled(False)
+        # Tăng kích thước font và chiều cao
+        font = self.next_step_btn.font()
+        font.setPointSize(11)
+        self.next_step_btn.setFont(font)
+        self.next_step_btn.setMinimumHeight(36)
         self.next_step_btn.clicked.connect(self.execute_next_step)
         
         self.execute_all_btn = QPushButton("Execute All")
         self.execute_all_btn.setEnabled(False)
+        # Tăng kích thước font và chiều cao
+        font = self.execute_all_btn.font()
+        font.setPointSize(11)
+        self.execute_all_btn.setFont(font)
+        self.execute_all_btn.setMinimumHeight(36)
         self.execute_all_btn.clicked.connect(self.execute_all_steps)
         
         buttons_layout.addWidget(self.next_step_btn)
@@ -111,8 +145,8 @@ class ResultPanel(QWidget):
         splitter.addWidget(middle_panel)
         splitter.addWidget(right_panel)
         
-        # Set reasonable sizes (ratio 2:1:1)
-        splitter.setSizes([400, 200, 200])
+        # Set reasonable sizes (ratio 4:3:3)
+        splitter.setSizes([400, 300, 300])
         
         main_layout.addWidget(splitter)
         self.setLayout(main_layout)
@@ -130,24 +164,43 @@ class ResultPanel(QWidget):
     def _update_animation(self):
         """Cập nhật animation loading"""
         self.animation_dots = (self.animation_dots + 1) % 4
-        self.loading_label.setText("Solving" + "." * self.animation_dots)
+        dots = "." * self.animation_dots
+        while len(dots) < 3:  # Đảm bảo đủ 3 ký tự để animation không làm thay đổi kích thước
+            dots += " "
+        self.loading_label.setText(f"Processing{dots}")
         
-    def set_algorithm(self, name):
-        """Set tên thuật toán đang chạy"""
-        self.algo_label.setText(f"Running: {name}")
-        self.loading_label.show()
-        self.animation_timer.start(500)  # Cập nhật mỗi 500ms
+    def set_algorithm(self, algo_name):
+        """Cập nhật tên thuật toán đang chạy và hiển thị animation loading"""
+        if not algo_name:
+            self.algo_label.setText("")
+            self._stop_animation()
+            return
+        
+        # Hiển thị tên thuật toán thay vì "Running"
+        self.algo_label.setText(f"{algo_name}")
+        self._start_animation()
         
         # Clear the info text
         self.info_text.clear()
+        
+        # Reset progress bar
+        self.progress_bar.setValue(0)
+        self.progress_bar.show()
+        
+    def _start_animation(self):
+        """Start animation"""
+        self.loading_label.show()
+        self.animation_timer.start(500)  # Cập nhật mỗi 500ms
+        
+    def _stop_animation(self):
+        """Stop animation"""
+        self.loading_label.hide()
+        self.animation_timer.stop()
         
     def clear_results(self):
         """Xóa kết quả"""
         self.result_text.clear()
         self.info_text.clear()
-        self.loading_label.show()
-        self.animation_dots = 0
-        self.animation_timer.start(500)
         
         # Reset solution and buttons state
         self.current_solution = []
@@ -156,6 +209,14 @@ class ResultPanel(QWidget):
         self.execute_all_btn.setEnabled(False)
         self.current_step_label.setText("Steps: 0/0")
         self.current_move_label.setText("Current move: None")
+        
+        # Hide progress bar
+        self.progress_bar.setValue(0)
+        self.progress_bar.hide()
+        
+        # Hide and clear metrics
+        self.metrics_group.hide()
+        self.metrics_text.clear()
         
     def add_result(self, text):
         """Thêm text vào kết quả"""
@@ -203,78 +264,72 @@ class ResultPanel(QWidget):
             self.metrics_group.hide()
             return
             
-        # Format the metrics for display
-        text = f"Runtime: {metrics.get('runtime_seconds', 0):.2f}s\n"
-        text += f"Tasks: {metrics.get('tasks_completed', 0)}/{metrics.get('tasks_submitted', 0)}\n"
-        text += f"Rate: {metrics.get('tasks_per_second', 0):.2f} tasks/sec\n"
-        
-        # Add detailed counters if available
-        counters = metrics.get('counters', {})
-        if counters:
-            text += "\nBreakdown:\n"
-            for key, value in counters.items():
-                if isinstance(value, (int, float)):
-                    text += f"- {key}: {value:.2f}\n"
-            
-        self.metrics_text.setText(text)
         self.metrics_group.show()
         
-    def set_rubik_widget(self, widget):
-        """Set reference to rubik widget"""
-        self.rubik_widget = widget
+        # Format metrics nicely
+        text = ""
+        if "runtime_seconds" in metrics:
+            text += f"Runtime: {metrics['runtime_seconds']:.2f}s\n"
         
+        if "tasks_completed" in metrics and "tasks_submitted" in metrics:
+            text += f"Tasks: {metrics['tasks_completed']}/{metrics['tasks_submitted']}"
+            
+            if "tasks_per_second" in metrics:
+                text += f" ({metrics['tasks_per_second']:.2f}/s)\n"
+            else:
+                text += "\n"
+        
+        if "counters" in metrics:
+            counters = metrics["counters"]
+            if counters:
+                text += "\nPerformance Counters:\n"
+                for name, value in counters.items():
+                    text += f"  {name}: {value}\n"
+        
+        self.metrics_text.setText(text)
+    
+    def set_rubik_widget(self, widget):
+        """Set reference to RubikWidget"""
+        self.rubik_widget = widget
+    
     def execute_next_step(self):
-        """Thực hiện bước tiếp theo trong solution"""
-        if not self.rubik_widget or not self.current_solution or self.current_step >= len(self.current_solution):
+        """Execute the next step in solution"""
+        if not self.current_solution or self.current_step >= len(self.current_solution):
             return
             
+        # Get the move to execute
         move = self.current_solution[self.current_step]
+        self.current_step += 1
         
-        # Parse the move
-        face = move[0]
-        clockwise = True
-        if len(move) > 1 and move[1] == "'":
-            clockwise = False
+        # Update the UI
+        self.current_step_label.setText(f"Steps: {self.current_step}/{len(self.current_solution)}")
+        self.current_move_label.setText(f"Current move: {move}")
+        
+        # Determine the parameters for the move
+        if self.rubik_widget:
+            # Parse the move string
+            face = move[0]  # First character is the face (U, D, R, L, F, B)
+            clockwise = True
             
-        # Apply the move - check if animation is in progress
-        if not self.rubik_widget.rubik.animating:
-            self.rubik_widget.rubik.rotate_face(face, clockwise)
+            if len(move) > 1:
+                if move[1] == "'":
+                    clockwise = False
+                elif move[1] == "2":
+                    # Double move - we'll execute it as two moves for now
+                    face = move[0]
+                    self.rubik_widget.rotate_face(face, clockwise)
+                    self.rubik_widget.rotate_face(face, clockwise)
+                    return
             
-            # Update step counter
-            self.current_step += 1
-            self.current_step_label.setText(f"Steps: {self.current_step}/{len(self.current_solution)}")
-            self.current_move_label.setText(f"Current move: {move}")
+            # Execute the move
+            self.rubik_widget.rotate_face(face, clockwise)
             
-            # Disable button if we're at the end
+            # Disable buttons if we've reached the end
             if self.current_step >= len(self.current_solution):
                 self.next_step_btn.setEnabled(False)
                 self.execute_all_btn.setEnabled(False)
-        
+    
     def execute_all_steps(self):
-        """Thực hiện tất cả các bước còn lại"""
-        if not self.rubik_widget or not self.current_solution:
-            return
-            
-        # Queue all remaining moves to the rubik widget
-        remaining_moves = []
-        for i in range(self.current_step, len(self.current_solution)):
-            move = self.current_solution[i]
-            face = move[0]
-            clockwise = True
-            if len(move) > 1 and move[1] == "'":
-                clockwise = False
-            remaining_moves.append((face, clockwise))
-            
-        # Add first move directly and rest to queue if animation is not active
-        if remaining_moves and not self.rubik_widget.rubik.animating:
-            first_move = remaining_moves.pop(0)
-            self.rubik_widget.rubik.rotate_face(first_move[0], first_move[1])
-            self.rubik_widget.move_queue.extend(remaining_moves)
-            
-            # Update UI
-            self.current_step = len(self.current_solution)
-            self.current_step_label.setText(f"Steps: {self.current_step}/{len(self.current_solution)}")
-            
-            # Disable buttons
-            self.next_step_btn.setEnabled(False)
-            self.execute_all_btn.setEnabled(False)
+        """Execute all remaining steps in solution"""
+        while self.current_step < len(self.current_solution) and self.rubik_widget:
+            self.execute_next_step()

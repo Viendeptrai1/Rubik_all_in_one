@@ -45,7 +45,11 @@ class KociembaAlgorithm(SolverAlgorithm):
         if not KociembaAlgorithm._pattern_database_initialized:
             self._generate_pattern_databases()
     
-    def solve(self):
+    def solve(self, progress_callback=None):
+        # Lưu callback để cập nhật tiến trình
+        if progress_callback:
+            self.set_progress_callback(progress_callback)
+            
         start_time = time.time()
         
         if self.signals:

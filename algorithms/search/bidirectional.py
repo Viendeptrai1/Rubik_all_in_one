@@ -14,7 +14,11 @@ class BidirectionalSearch(SolverAlgorithm):
         return """Bidirectional Search explores from both initial state and goal state,
         meeting in the middle to find solution faster than unidirectional search."""
 
-    def solve(self):
+    def solve(self, progress_callback=None):
+        # Lưu callback để cập nhật tiến trình
+        if progress_callback:
+            self.set_progress_callback(progress_callback)
+            
         start_time = time.time()
         
         # Use priority queues instead of regular queues to prioritize promising states

@@ -7,7 +7,7 @@ import threading
 class WorkerSignals(QObject):
     progress = pyqtSignal(int, int)
     status = pyqtSignal(str)
-    finished = pyqtSignal(list, float)
+    finished = pyqtSignal(object, float)  # Thay đổi từ list sang object để hỗ trợ nhiều kiểu dữ liệu trả về
     error = pyqtSignal(str)
     metrics = pyqtSignal(dict)  # New signal for reporting performance metrics
 
@@ -15,6 +15,7 @@ class SolverWorker(QRunnable):
     def __init__(self, algorithm):
         super().__init__()
         self.algorithm = algorithm
+        self.callable_func = None  # Thêm biến để lưu hàm callable
         self.is_cancelled = False
         self.signals = WorkerSignals()
         self.parallel_solver = None
@@ -27,8 +28,14 @@ class SolverWorker(QRunnable):
     def set_algorithm(self, algorithm):
         """Set or update the algorithm after initialization"""
         self.algorithm = algorithm
+        self.callable_func = None  # Reset callable function khi set algorithm
         if self.algorithm is not None:
             self.algorithm.signals = self.signals
+    
+    def set_callable(self, func):
+        """Set a custom callable function to run instead of an algorithm"""
+        self.callable_func = func
+        self.algorithm = None  # Reset algorithm khi set callable
     
     def progress_callback(self, current, total):
         self.signals.progress.emit(current, total)
@@ -50,110 +57,68 @@ class SolverWorker(QRunnable):
             self.metrics_timer.start()
     
     def run(self):
+        """Run the solver in a background thread"""
+        solution = None
+        start_time = time.time()
+        
         try:
-            if self.algorithm is None:
-                self.signals.error.emit("No algorithm provided")
-                return
-                
-            # Report initialization
-            self.signals.status.emit(f"Initializing {self.algorithm.__class__.__name__}...")
+            self.signals.status.emit("Starting solving process...")
             
-            # Set progress callback
-            self.algorithm.set_progress_callback(self.progress_callback)
+            # Báo cáo tiến trình ban đầu
+            self.signals.progress.emit(0, 100)
             
-            # Set timeout for advanced algorithms
-            timeout = False
-            max_time = 60  # 60 seconds timeout
-            start_time = time.time()
-            
-            # Create parallel solver with optimized settings if supported
-            if hasattr(self.algorithm, 'set_parallel_solver'):
-                from parallel_solver import ParallelSolver
-                self.parallel_solver = ParallelSolver()
-                self.algorithm.set_parallel_solver(self.parallel_solver)
-                
-                # Start metrics reporting
-                self.start_metrics_reporting()
-            
-            # Start algorithm with timeout monitoring
-            solution = None
-            
-            # Import here to avoid circular imports
-            from algorithms.advanced import KociembaAlgorithm, ThistlethwaiteAlgorithm
-            
-            # Run the algorithm with timeout monitoring
-            if isinstance(self.algorithm, (KociembaAlgorithm, ThistlethwaiteAlgorithm)):
-                # Advanced algorithms get timeout monitoring
-                import threading
-                timeout_event = threading.Event()
-                
-                def check_timeout():
-                    time.time_slept = 0
-                    while time_time_slept < max_time and not timeout_event.is_set():
-                        time.sleep(1.0)
-                        time_time_slept += 1
-                        
-                        # Report progress periodically
-                        if self.parallel_solver and time_time_slept % 5 == 0:
-                            metrics = self.parallel_solver.get_metrics()
-                            self.signals.status.emit(
-                                f"Running for {time_time_slept}s... "
-                                f"Tasks: {metrics['tasks_completed']}/{metrics['tasks_submitted']} "
-                                f"({metrics['tasks_per_second']:.2f}/s)"
-                            )
-                    
-                    if not timeout_event.is_set():
-                        timeout_event.set()
-                        self.signals.status.emit(f"Algorithm taking too long, stopping...")
-                        self.is_cancelled = True
-                
-                timer_thread = threading.Thread(target=check_timeout)
-                timer_thread.daemon = True
-                timer_thread.start()
-                
-                try:
-                    solution = self.algorithm.solve()
-                finally:
-                    timeout_event.set()  # Stop the timer thread
+            # Chạy thuật toán hoặc hàm tùy chỉnh
+            if self.algorithm is not None:
+                # Sử dụng thuật toán
+                solution = self.algorithm.solve(self.progress_callback)
+            elif self.callable_func is not None:
+                # Sử dụng hàm tùy chỉnh
+                solution = self.callable_func()
+                # Báo cáo tiến trình hoàn thành
+                self.signals.progress.emit(100, 100)
             else:
-                # Regular algorithms
-                solution = self.algorithm.solve()
-                
-            solve_time = time.time() - start_time
+                raise ValueError("No algorithm or callable function provided")
             
-            if self.parallel_solver:
-                # Get final metrics
-                final_metrics = self.parallel_solver.get_metrics()
-                self.signals.metrics.emit(final_metrics)
-                
-                # Stop the parallel solver
-                self.parallel_solver.stop()
-            
-            # Cancel metrics timer if it exists
-            if self.metrics_timer and self.metrics_timer.is_alive():
-                self.metrics_timer.cancel()
-            
+            # Kiểm tra nếu đã hủy
             if self.is_cancelled:
-                self.signals.error.emit("Solving cancelled by user or timeout")
-            elif solution:
-                self.signals.status.emit("Solution found!")
-                self.signals.finished.emit(solution, solve_time)
+                return
+            
+            # Kiểm tra kết quả
+            if solution is None:
+                self.signals.status.emit("No solution found!")
             else:
-                self.signals.error.emit("No solution found!")
+                self.signals.status.emit("Solution found!")
                 
         except Exception as e:
-            import traceback
-            error_detail = f"Error: {str(e)}\n{traceback.format_exc()}"
-            print(error_detail)  # Log to console
-            self.signals.error.emit(error_detail)
-            
+            # Bắt và xử lý ngoại lệ
+            trace = traceback.format_exc()
+            error_msg = f"{str(e)}\n{trace}"
+            print(f"Error in SolverWorker: {error_msg}")
+            self.signals.error.emit(str(e))
+            return
         finally:
+            # Dừng báo cáo metrics
+            if self.metrics_timer:
+                self.metrics_timer.cancel()
+            
+            # Dừng parallel solver nếu có
             if self.parallel_solver:
                 self.parallel_solver.stop()
-            if self.metrics_timer and self.metrics_timer.is_alive():
-                self.metrics_timer.cancel()
-
+        
+        # Tính thời gian thực hiện
+        elapsed_time = time.time() - start_time
+        
+        # Emit tín hiệu hoàn thành
+        self.signals.finished.emit(solution, elapsed_time)
+    
     def cancel(self):
+        """Cancel the running solver"""
         self.is_cancelled = True
+        
+        # Dừng timer báo cáo metrics
+        if self.metrics_timer:
+            self.metrics_timer.cancel()
+        
+        # Dừng parallel solver nếu có
         if self.parallel_solver:
             self.parallel_solver.stop()

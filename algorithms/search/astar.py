@@ -32,7 +32,11 @@ class AStar(SolverAlgorithm):
         self.corner_db = SearchOptimizations.compute_corner_distance_db(solved_cube)
         self.edge_db = SearchOptimizations.compute_edge_distance_db(solved_cube)
         
-    def solve(self):
+    def solve(self, progress_callback=None):
+        # Lưu callback để cập nhật tiến trình
+        if progress_callback:
+            self.set_progress_callback(progress_callback)
+            
         start_time = time.time()
         
         # Use an optimized priority queue implementation

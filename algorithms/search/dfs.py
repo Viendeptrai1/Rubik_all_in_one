@@ -12,7 +12,11 @@ class DFS(SolverAlgorithm):
         before backtracking. Uses less memory than BFS but may not find
         optimal solution."""
     
-    def solve(self, max_depth=20):
+    def solve(self, progress_callback=None, max_depth=20):
+        # Lưu callback để cập nhật tiến trình
+        if progress_callback:
+            self.set_progress_callback(progress_callback)
+            
         start_time = time.time()
         self.visited = set()
         solution = self._dfs(self.cube, [], 0, max_depth)

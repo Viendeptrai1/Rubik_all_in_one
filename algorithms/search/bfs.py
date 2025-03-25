@@ -16,7 +16,11 @@ class BFS(SolverAlgorithm):
         before moving to next depth level. Guarantees optimal solution but
         uses large amount of memory."""
     
-    def solve(self):
+    def solve(self, progress_callback=None):
+        # Lưu callback để cập nhật tiến trình
+        if progress_callback:
+            self.set_progress_callback(progress_callback)
+            
         start_time = time.time()
         queue = deque([(self.cube, [])])
         visited = set()
