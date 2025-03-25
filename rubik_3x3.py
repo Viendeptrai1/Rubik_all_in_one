@@ -169,6 +169,9 @@ class RubikCube:
         self.rotation_x = 0  # Góc xoay quanh trục x
         self.rotation_y = 0  # Góc xoay quanh trục y
         
+        # Khởi tạo trạng thái RubikState
+        self.state = SOLVED_STATE_3X3.copy()
+        
         # Khởi tạo các khối
         self.pieces = []
         for x in range(size):
@@ -339,6 +342,15 @@ class RubikCube:
             # Cập nhật màu sắc - clockwise đã được điều chỉnh ở trên
             piece.colors = self._rotate_colors(piece, rot_info['axis'], angle)
         
+        # Cập nhật trạng thái logic
+        move = face
+        if not clockwise:
+            move = f"{face}'"
+            
+        # Cập nhật trạng thái trong RubikState
+        from RubikState.rubik_chen import MOVES as MOVES_3X3
+        self.state = self.state.apply_move(move, MOVES_3X3)
+        
         # Reset trạng thái animation
         self.animating = False
         self.animation_face = None
@@ -348,11 +360,14 @@ class RubikCube:
     def scramble(self, num_moves=20):
         """Xáo trộn Rubik ngẫu nhiên"""
         if self.animating:  # Nếu đang có animation, không thực hiện
-            return
+            return None
             
         import random
         faces = ['F', 'B', 'L', 'R', 'U', 'D']
         moves = []
+        
+        # Reset trạng thái về trạng thái đã giải
+        self.state = SOLVED_STATE_3X3.copy()
         
         last_face = None
         for _ in range(num_moves):
@@ -363,6 +378,13 @@ class RubikCube:
             
             clockwise = random.choice([True, False])
             moves.append((face, clockwise))
+            
+            # Cập nhật trạng thái trong RubikState
+            move = face
+            if not clockwise:
+                move = face + "'"
+            from RubikState.rubik_chen import MOVES as MOVES_3X3
+            self.state = self.state.apply_move(move, MOVES_3X3)
         
         # Thực hiện move đầu tiên
         if moves:
@@ -371,6 +393,9 @@ class RubikCube:
             
             # Lưu các moves còn lại vào queue
             self._scramble_queue = moves
+            
+        # Trả về danh sách các nước đi để đồng bộ với RubikState
+        return [(face, clockwise) for face, clockwise in [(face, clockwise)] + self._scramble_queue] if hasattr(self, '_scramble_queue') else []
 
     def rotate_cube(self, dx, dy):
         """Xoay toàn bộ khối Rubik"""
@@ -468,124 +493,43 @@ class RubikCube:
         return new_colors
 
     def get_state(self):
-        """Trả về trạng thái hiện tại của Rubik dựa trên vị trí và màu sắc của các khối"""
-        # Khởi tạo trạng thái mặc định
-        cp = [0] * 8  # Hoán vị góc
-        co = [0] * 8  # Định hướng góc
-        ep = [0] * 12  # Hoán vị cạnh
-        eo = [0] * 12  # Định hướng cạnh
+        """Trả về trạng thái hiện tại của Rubik"""
+        return self.state
+
+    def get_corner_permutation(self):
+        """Trả về hoán vị góc hiện tại của khối Rubik 3x3"""
+        return self.state.cp
         
-        # Tạo bản đồ vị trí đến indexing cho góc
-        corner_pos_map = {
-            (2, 2, 2): 0,  # URF
-            (0, 2, 2): 1,  # ULF
-            (0, 2, 0): 2,  # ULB
-            (2, 2, 0): 3,  # URB
-            (2, 0, 2): 4,  # DRF
-            (0, 0, 2): 5,  # DLF
-            (0, 0, 0): 6,  # DLB
-            (2, 0, 0): 7,  # DRB
-        }
+    def get_corner_orientation(self):
+        """Trả về định hướng góc hiện tại của khối Rubik 3x3"""
+        return self.state.co
         
-        # Tạo bản đồ vị trí đến indexing cho cạnh
-        edge_pos_map = {
-            (2, 2, 1): 0,  # UR
-            (1, 2, 2): 1,  # UF
-            (0, 2, 1): 2,  # UL
-            (1, 2, 0): 3,  # UB
-            (2, 0, 1): 4,  # DR
-            (1, 0, 2): 5,  # DF
-            (0, 0, 1): 6,  # DL
-            (1, 0, 0): 7,  # DB
-            (2, 1, 2): 8,  # FR
-            (0, 1, 2): 9,  # FL
-            (0, 1, 0): 10, # BL
-            (2, 1, 0): 11, # BR
-        }
+    def get_edge_permutation(self):
+        """Trả về hoán vị cạnh hiện tại của khối Rubik 3x3"""
+        return self.state.ep
         
-        # Bản đồ màu để xác định góc và cạnh
-        # Mỗi góc và cạnh có một kết hợp màu duy nhất
-        corner_color_map = {
-            ('W', 'B', 'O'): 3,  # URB
-            ('W', 'G', 'O'): 2,  # ULB
-            ('W', 'G', 'R'): 1,  # ULF
-            ('W', 'B', 'R'): 0,  # URF
-            ('Y', 'B', 'O'): 7,  # DRB
-            ('Y', 'G', 'O'): 6,  # DLB
-            ('Y', 'G', 'R'): 5,  # DLF
-            ('Y', 'B', 'R'): 4,  # DRF
-        }
+    def get_edge_orientation(self):
+        """Trả về định hướng cạnh hiện tại của khối Rubik 3x3"""
+        return self.state.eo 
         
-        edge_color_map = {
-            ('W', 'B'): 0,   # UR
-            ('W', 'R'): 1,   # UF
-            ('W', 'G'): 2,   # UL
-            ('W', 'O'): 3,   # UB
-            ('Y', 'B'): 4,   # DR
-            ('Y', 'R'): 5,   # DF
-            ('Y', 'G'): 6,   # DL
-            ('Y', 'O'): 7,   # DB
-            ('B', 'R'): 8,   # FR
-            ('G', 'R'): 9,   # FL
-            ('G', 'O'): 10,  # BL
-            ('B', 'O'): 11,  # BR
-        }
+    def get_state_tuple(self):
+        """
+        Trả về biểu diễn trạng thái của Rubik 3x3 dưới dạng 4 tuple.
         
-        # Xử lý góc - xác định vị trí và định hướng
-        for piece in self.pieces:
-            pos = tuple(piece.position)
-            
-            # Chỉ xử lý khối góc (có 3 màu)
-            if len(piece.colors) == 3 and pos in corner_pos_map:
-                pos_idx = corner_pos_map[pos]
-                
-                # Lấy màu cho mỗi mặt
-                colors = []
-                for face, color_tuple in piece.colors.items():
-                    # Chuyển đổi màu RGB thành chữ cái
-                    if color_tuple == self.COLORS['W']: colors.append('W')
-                    elif color_tuple == self.COLORS['Y']: colors.append('Y')
-                    elif color_tuple == self.COLORS['R']: colors.append('R')
-                    elif color_tuple == self.COLORS['O']: colors.append('O')
-                    elif color_tuple == self.COLORS['G']: colors.append('G')
-                    elif color_tuple == self.COLORS['B']: colors.append('B')
-                
-                # Sắp xếp màu để khớp với bản đồ
-                colors = tuple(sorted(colors))
-                
-                if colors in corner_color_map:
-                    # Xác định góc nào đang ở vị trí này
-                    corner_idx = corner_color_map[colors]
-                    cp[pos_idx] = corner_idx
-                    
-                    # TODO: Xác định định hướng (phức tạp hơn, cần kiểm tra màu cụ thể trên mỗi mặt)
-                    # Hiện tại giả sử định hướng là 0 cho tất cả
-            
-            # Xử lý cạnh (có 2 màu)
-            elif len(piece.colors) == 2 and pos in edge_pos_map:
-                pos_idx = edge_pos_map[pos]
-                
-                # Lấy màu cho mỗi mặt
-                colors = []
-                for face, color_tuple in piece.colors.items():
-                    # Chuyển đổi màu RGB thành chữ cái
-                    if color_tuple == self.COLORS['W']: colors.append('W')
-                    elif color_tuple == self.COLORS['Y']: colors.append('Y')
-                    elif color_tuple == self.COLORS['R']: colors.append('R')
-                    elif color_tuple == self.COLORS['O']: colors.append('O')
-                    elif color_tuple == self.COLORS['G']: colors.append('G')
-                    elif color_tuple == self.COLORS['B']: colors.append('B')
-                
-                # Sắp xếp màu để khớp với bản đồ
-                colors = tuple(sorted(colors))
-                
-                if colors in edge_color_map:
-                    # Xác định cạnh nào đang ở vị trí này
-                    edge_idx = edge_color_map[colors]
-                    ep[pos_idx] = edge_idx
-                    
-                    # TODO: Xác định định hướng (phức tạp hơn, cần kiểm tra màu cụ thể trên mỗi mặt)
-                    # Hiện tại giả sử định hướng là 0 cho tất cả
+        Trạng thái này được cập nhật tự động mỗi khi phương thức _complete_rotation()
+        được gọi sau khi hoàn thành một phép xoay mặt.
         
-        # Trả về đối tượng RubikState
-        return RubikState(cp, co, ep, eo) 
+        Returns:
+            tuple: (cp, co, ep, eo) - Tuple gồm các tuple con biểu diễn
+                  hoán vị góc, định hướng góc, hoán vị cạnh, định hướng cạnh
+        """
+        # Lấy trạng thái hiện tại
+        state = self.state
+        
+        # Trả về các tuple biểu diễn trạng thái
+        return (
+            state.cp,  # Corner permutation (hoán vị góc)
+            state.co,  # Corner orientation (định hướng góc)
+            state.ep,  # Edge permutation (hoán vị cạnh)
+            state.eo   # Edge orientation (định hướng cạnh)
+        ) 
