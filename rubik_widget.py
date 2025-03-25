@@ -9,6 +9,7 @@ class RubikWidget(QOpenGLWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.rubik = RubikCube()
+        self.cube = self.rubik  # Thêm alias để truy cập trực tiếp đến đối tượng Rubik
         self.last_pos = QPoint()
         self.zoom = -10
         self.move_queue = []
@@ -28,20 +29,35 @@ class RubikWidget(QOpenGLWidget):
 
     def paintGL(self):
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-        if self.rubik.update_animation():
-            # Animation completed, check queue
+        
+        # Cập nhật animation
+        animation_completed = self.rubik.update_animation()
+        
+        # Nếu animation đã hoàn thành, cập nhật hiển thị trạng thái
+        if animation_completed:
+            # Thông báo cho controls widget cập nhật hiển thị trạng thái
+            if hasattr(self.parent(), 'parent') and self.parent().parent():
+                window = self.parent().parent()
+                if hasattr(window, 'controls'):
+                    window.controls.update_state_display()
+            
+            # Nếu có nước đi tiếp theo trong hàng đợi
             if self.move_queue and not self.rubik.animating:
                 face, clockwise = self.move_queue.pop(0)
                 # Áp dụng nước đi kế tiếp
                 self.rubik.rotate_face(face, clockwise)
                 
-                # Thông báo cho các widget khác cập nhật nếu cần
-                if hasattr(self.parent(), 'parent') and self.parent().parent():
-                    window = self.parent().parent()
-                    if hasattr(window, 'controls'):
-                        window.controls.update_state_display()
+        # Hoặc nếu không có animation đang chạy và có nước đi trong hàng đợi
+        elif not self.rubik.animating and self.move_queue:
+            face, clockwise = self.move_queue.pop(0)
+            # Áp dụng nước đi kế tiếp
+            self.rubik.rotate_face(face, clockwise)
+        
+        # Vẽ khối Rubik
         self.rubik.draw_cube()
-        self.update()  # Trigger repaint for animations
+        
+        # Kích hoạt vẽ lại để tiếp tục animation
+        self.update()
 
     def mousePressEvent(self, event):
         self.last_pos = event.pos()
@@ -66,6 +82,7 @@ class RubikWidget2x2(QOpenGLWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.rubik = RubikCube2x2()
+        self.cube = self.rubik  # Thêm alias để truy cập trực tiếp đến đối tượng Rubik
         self.last_pos = QPoint()
         self.zoom = -5  # Khởi tạo gần hơn vì rubik 2x2 nhỏ hơn
         self.move_queue = []
@@ -86,28 +103,34 @@ class RubikWidget2x2(QOpenGLWidget):
     def paintGL(self):
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         
-        # Setup góc nhìn
-        glMatrixMode(GL_MODELVIEW)
-        glLoadIdentity()
-        glTranslatef(0, 0, self.zoom)
+        # Cập nhật animation
+        animation_completed = self.rubik.update_animation()
         
-        # Cập nhật animation và kiểm tra queue
-        if self.rubik.update_animation():
-            # Animation completed, check queue
+        # Nếu animation đã hoàn thành, cập nhật hiển thị trạng thái
+        if animation_completed:
+            # Thông báo cho controls widget cập nhật hiển thị trạng thái
+            if hasattr(self.parent(), 'parent') and self.parent().parent():
+                window = self.parent().parent()
+                if hasattr(window, 'controls'):
+                    window.controls.update_state_display()
+            
+            # Nếu có nước đi tiếp theo trong hàng đợi
             if self.move_queue and not self.rubik.animating:
                 face, clockwise = self.move_queue.pop(0)
                 # Áp dụng nước đi kế tiếp
                 self.rubik.rotate_face(face, clockwise)
                 
-                # Thông báo cho các widget khác cập nhật nếu cần
-                if hasattr(self.parent(), 'parent') and self.parent().parent():
-                    window = self.parent().parent()
-                    if hasattr(window, 'controls'):
-                        window.controls.update_state_display()
+        # Hoặc nếu không có animation đang chạy và có nước đi trong hàng đợi
+        elif not self.rubik.animating and self.move_queue:
+            face, clockwise = self.move_queue.pop(0)
+            # Áp dụng nước đi kế tiếp
+            self.rubik.rotate_face(face, clockwise)
         
-        # Vẽ cube
+        # Vẽ khối Rubik
         self.rubik.draw_cube()
-        self.update()  # Trigger repaint for animations
+        
+        # Kích hoạt vẽ lại để tiếp tục animation
+        self.update()
 
     def mousePressEvent(self, event):
         self.last_pos = event.pos()
