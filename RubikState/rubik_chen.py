@@ -3,8 +3,6 @@
 # Thứ tự cạnh: 0=UR, 1=UF, 2=UL, 3=UB, 4=DR, 5=DF, 6=DL, 7=DB, 8=FR, 9=FL, 10=BL, 11=BR
 # Định hướng cạnh: 0=đúng hướng, 1=lật ngược
 
-import numpy as np
-
 class RubikState:
     """
     Lớp quản lý trạng thái Rubik Cube 3x3.
@@ -43,7 +41,7 @@ class RubikState:
 
     def apply_move(self, move, moves_dict=None):
         if moves_dict is None:
-            moves_dict = MOVES
+            moves_dict = MOVES_3x3
         move_def = moves_dict[move]
         new_cp = tuple(self.cp[p] for p in move_def['cp'])
         new_co = tuple((self.co[p] + o) % 3 for p, o in zip(move_def['cp'], move_def['co']))
@@ -56,7 +54,7 @@ class RubikState:
 # co: Các góc được định hướng đúng (tất cả 0)
 # ep: Các cạnh được sắp xếp đúng vị trí (0-11)
 # eo: Các cạnh được định hướng đúng (tất cả 0)
-SOLVED_STATE = RubikState(
+SOLVED_STATE_3x3 = RubikState(
     tuple(range(8)),  # cp: Góc đúng vị trí
     tuple([0] * 8),   # co: Góc đúng hướng
     tuple(range(12)), # ep: Cạnh đúng vị trí
@@ -69,10 +67,18 @@ SOLVED_STATE = RubikState(
 # - co: Thay đổi hướng góc (0=không đổi, 1=xoay CW, 2=xoay CCW)
 # - ep: Hoán vị cạnh (vị trí mới của mỗi cạnh sau khi xoay)
 # - eo: Thay đổi hướng cạnh (0=không đổi, 1=lật ngược)
-MOVES = {
+MOVES_3x3 = {
     # Ví dụ: R (xoay mặt phải theo chiều kim đồng hồ)
     # Ảnh hưởng đến các góc 0=URF, 3=URB, 4=DRF, 7=DRB và cạnh 0=UR, 8=FR, 11=BR, 4=DR
     "R": {
+        "cp": (3, 1, 2, 7, 0, 5, 6, 4),
+        "co": (1, 0, 0, 2, 2, 0, 0, 1),
+        "ep": (4, 1, 2, 3, 11, 5, 6, 7, 0, 9, 10, 8),
+        "eo": (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    },
+    
+    # R': Xoay mặt phải ngược chiều kim đồng hồ
+    "R'": {
         # Hoán vị góc: 0->4->7->3->0
         "cp": (4, 1, 2, 0, 7, 5, 6, 3),
         # Định hướng góc: 1=xoay CW góc 0,4,7,3
@@ -82,15 +88,6 @@ MOVES = {
         # Định hướng cạnh: không thay đổi (0)
         "eo": (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     },
-    
-    # R': Xoay mặt phải ngược chiều kim đồng hồ
-    "R'": {
-        "cp": (3, 1, 2, 7, 0, 5, 6, 4),
-        "co": (1, 0, 0, 2, 2, 0, 0, 1),
-        "ep": (4, 1, 2, 3, 11, 5, 6, 7, 0, 9, 10, 8),
-        "eo": (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
-    },
-    
     # L: Xoay mặt trái theo chiều kim đồng hồ
     "L": {
         "cp": (0, 5, 1, 3, 4, 6, 2, 7),
@@ -173,7 +170,7 @@ MOVES = {
 }
 
 # Danh sách tên các nước đi 
-MOVE_NAMES = list(MOVES.keys())
+MOVE_NAMES = list(MOVES_3x3.keys())
 
 def calculate_parity(perm):
     """Tính dấu hoán vị (chẵn: 0, lẻ: 1)"""
@@ -185,7 +182,7 @@ def calculate_parity(perm):
                 inversions += 1
     return inversions % 2
 
-def heuristic(state):
+def heuristic_3x3(state):
     # Tối ưu hóa bằng cách kết hợp các vòng lặp
     corner_misplaced = corner_misoriented = 0
     for i in range(8):

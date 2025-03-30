@@ -310,7 +310,7 @@ class ControlsWidget(QWidget):
     def solve_rubik(self):
         """Giải Rubik bằng thuật toán đã chọn"""
         # Thêm code gỡ lỗi
-        print("Trạng thái ban đầu:", self.rubik_widget.rubik.state)
+        print("Trạng thái ban đầu:", self.rubik_widget.rubik.state_tuple)
         
         # Cập nhật trạng thái giải
         self.solution_status.setText("Đang giải...")
@@ -326,18 +326,29 @@ class ControlsWidget(QWidget):
             return
         
         # Lấy trạng thái hiện tại
-        current_state = self.rubik_widget.rubik.state
+        # Đảo ngược trạng thái vì thuộc tính state đã bị đảo ngược so với quy ước
+        # của thuật toán giải
+        from RubikState.rubik_chen import RubikState, SOLVED_STATE_3x3, MOVES_3x3
+        from RubikState.rubik_2x2 import Rubik2x2State, SOLVED_STATE_2x2, MOVES_2x2
+        
+        # Lấy trạng thái current_state từ state_tuple để có trạng thái không bị đảo ngược
+        if self.is_2x2:
+            cp, co = self.rubik_widget.rubik.state_tuple
+            current_state = Rubik2x2State(cp, co)
+        else:
+            cp, co, ep, eo = self.rubik_widget.rubik.state_tuple
+            current_state = RubikState(cp, co, ep, eo)
+        
+        print("Trạng thái đã chuyển đổi (không bị đảo ngược):", current_state)
         
         # Lấy thuật toán đã chọn
         algorithm_index = self.algorithm_combo.currentIndex()
         time_limit = self.time_limit_spin.value()
         
         # Ghi đè giới hạn thời gian cho các thuật toán
-        from RubikState.rubik_chen import MOVES as MOVES_3X3
-        from RubikState.rubik_2x2 import MOVES as MOVES_2X2
         
         # Xác định nước đi phù hợp dựa trên loại Rubik
-        moves_dict = MOVES_2X2 if self.is_2x2 else MOVES_3X3
+        moves_dict = MOVES_2x2 if self.is_2x2 else MOVES_3x3
         
         # Hiển thị thông tin về trạng thái giải
         cube_type = "Rubik 2x2" if self.is_2x2 else "Rubik 3x3"
@@ -377,6 +388,9 @@ class ControlsWidget(QWidget):
                 self.nodes_visited.setText(f"{nodes_visited}")
                 self.solution_length.setText(f"{len(path)}")
                 
+                # Đảo ngược thứ tự các nước đi
+                path = path[::-1]
+                
                 # Hiển thị lời giải
                 moves_str = " ".join([move if move.find("'") > 0 else f"{move} " for move in path])
                 self.solution_moves.setPlainText(moves_str)
@@ -392,9 +406,10 @@ class ControlsWidget(QWidget):
                 # Áp dụng từng bước để kiểm tra
                 for move in path:
                     test_state = test_state.apply_move(move, moves_dict)
-                    
+                from RubikState.rubik_chen import SOLVED_STATE_3x3
+                from RubikState.rubik_2x2 import SOLVED_STATE_2x2
                 # Kiểm tra xem trạng thái cuối có phải là đã giải
-                solved_state = SOLVED_STATE_2X2 if self.is_2x2 else SOLVED_STATE_3X3
+                solved_state = SOLVED_STATE_2x2 if self.is_2x2 else SOLVED_STATE_3x3
                 print("Trạng thái sau khi áp dụng lời giải:", test_state)
                 print("Trạng thái đã giải:", solved_state)
                 print("Đã giải đúng:", test_state == solved_state)

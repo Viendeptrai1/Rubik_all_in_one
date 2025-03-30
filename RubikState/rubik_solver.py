@@ -1,9 +1,8 @@
 import heapq
 import time
 from collections import deque
-from queue import PriorityQueue
-from RubikState.rubik_chen import RubikState, SOLVED_STATE as SOLVED_STATE_3X3, MOVES as MOVES_3X3, heuristic as heuristic_3x3
-from RubikState.rubik_2x2 import Rubik2x2State, SOLVED_STATE as SOLVED_STATE_2X2, MOVES as MOVES_2X2, heuristic as heuristic_2x2
+from RubikState.rubik_chen import RubikState, SOLVED_STATE_3x3, MOVES_3x3, heuristic_3x3
+from RubikState.rubik_2x2 import Rubik2x2State, SOLVED_STATE_2x2, MOVES_2x2, heuristic_2x2
 
 def a_star_3x3(start_state, goal_state=None, moves_dict=None):
     """
@@ -18,10 +17,10 @@ def a_star_3x3(start_state, goal_state=None, moves_dict=None):
         tuple: (đường đi, số node đã duyệt, thời gian)
     """
     if goal_state is None:
-        goal_state = SOLVED_STATE_3X3
+        goal_state = SOLVED_STATE_3x3
     
     if moves_dict is None:
-        moves_dict = MOVES_3X3
+        moves_dict = MOVES_3x3
     
     # Lấy danh sách tên nước đi từ moves_dict
     move_names = list(moves_dict.keys())
@@ -72,10 +71,10 @@ def a_star_2x2(start_state, goal_state=None, moves_dict=None):
         tuple: (đường đi, số node đã duyệt, thời gian)
     """
     if goal_state is None:
-        goal_state = SOLVED_STATE_2X2
+        goal_state = SOLVED_STATE_2x2
     
     if moves_dict is None:
-        moves_dict = MOVES_2X2
+        moves_dict = MOVES_2x2
     
     # Lấy danh sách tên nước đi từ moves_dict
     move_names = list(moves_dict.keys())
@@ -126,10 +125,10 @@ def bfs_3x3(start_state, goal_state=None, moves_dict=None):
         tuple: (đường đi, số node đã duyệt, thời gian)
     """
     if goal_state is None:
-        goal_state = SOLVED_STATE_3X3
+        goal_state = SOLVED_STATE_3x3
     
     if moves_dict is None:
-        moves_dict = MOVES_3X3
+        moves_dict = MOVES_3x3
     
     # Lấy danh sách tên nước đi từ moves_dict
     move_names = list(moves_dict.keys())
@@ -174,10 +173,10 @@ def bfs_2x2(start_state, goal_state=None, moves_dict=None):
         tuple: (đường đi, số node đã duyệt, thời gian)
     """
     if goal_state is None:
-        goal_state = SOLVED_STATE_2X2
+        goal_state = SOLVED_STATE_2x2
     
     if moves_dict is None:
-        moves_dict = MOVES_2X2
+        moves_dict = MOVES_2x2
     
     # Lấy danh sách tên nước đi từ moves_dict
     move_names = list(moves_dict.keys())
@@ -231,37 +230,142 @@ def bfs(start_state, goal_state=None, moves_dict=None):
     else:
         raise ValueError("Trạng thái đầu vào không phải là RubikState hoặc Rubik2x2State")
 
-# Phần mã thử nghiệm này sẽ chỉ chạy khi tệp này được thực thi trực tiếp
-if __name__ == "__main__":
-    # Tạo trạng thái ban đầu cho Rubik 3x3 (xáo trộn nhẹ)
-    start_state_3x3 = SOLVED_STATE_3X3.copy()
-    start_state_3x3 = start_state_3x3.apply_move("R", MOVES_3X3)
-    start_state_3x3 = start_state_3x3.apply_move("U", MOVES_3X3)
-    
-    # Tạo trạng thái ban đầu cho Rubik 2x2 (xáo trộn nhẹ)
-    start_state_2x2 = SOLVED_STATE_2X2.copy()
-    start_state_2x2 = start_state_2x2.apply_move("R", MOVES_2X2)
-    start_state_2x2 = start_state_2x2.apply_move("U", MOVES_2X2)
-    start_state_2x2 = start_state_2x2.apply_move("U", MOVES_2X2)
-    
-    print("Giải Rubik 3x3 bằng A*:")
-    path, nodes_visited, time_taken = a_star(start_state_3x3)
-    if path:
-        print("Đường đi:", path)
-        print(f"Thời gian: {time_taken:.2f} giây")
-        print("Số node đã duyệt:", nodes_visited)
-    else:
-        print("Không tìm thấy lời giải")
-        print(f"Thời gian: {time_taken:.2f} giây")
-        print("Số node đã duyệt:", nodes_visited)
 
-    print("\nGiải Rubik 2x2 bằng A*:")
-    path, nodes_visited, time_taken = a_star(start_state_2x2)
-    if path:
-        print("Đường đi:", path)
-        print(f"Thời gian: {time_taken:.2f} giây")
-        print("Số node đã duyệt:", nodes_visited)
+# test_rubik_solver.py
+
+
+def test_solver(is_2x2=False, algorithm="bfs", scramble_moves=None):
+    """Test thuật toán giải Rubik
+    
+    Args:
+        is_2x2: Nếu True, test Rubik 2x2, ngược lại test Rubik 3x3
+        algorithm: Thuật toán để test ('bfs' hoặc 'a_star')
+        scramble_moves: List các nước đi để xáo trộn, nếu None sẽ dùng mặc định
+    
+    Returns:
+        True nếu thuật toán giải thành công, False nếu không
+    """
+    print(f"\n===== TEST THUẬT TOÁN {algorithm.upper()} CHO {'RUBIK 2X2' if is_2x2 else 'RUBIK 3X3'} =====")
+    
+    # Tạo trạng thái ban đầu (đã giải) và chọn đúng tập nước đi
+    if is_2x2:
+        solved_state = SOLVED_STATE_2x2
+        moves_dict = MOVES_2x2
+        state_class = Rubik2x2State
     else:
-        print("Không tìm thấy lời giải")
-        print(f"Thời gian: {time_taken:.2f} giây")
-        print("Số node đã duyệt:", nodes_visited)
+        solved_state = SOLVED_STATE_3x3
+        moves_dict = MOVES_3x3
+        state_class = RubikState
+    
+    # Xác định nước đi xáo trộn nếu không cung cấp
+    if scramble_moves is None:
+        if is_2x2:
+            # Các nước đi đơn giản cho Rubik 2x2
+            scramble_moves = ["R", "U", "R'", "U'", "R", "U", "R'"]
+        else:
+            # Các nước đi đơn giản cho Rubik 3x3
+            scramble_moves = ["R", "U", "R'", "U'", "F'", "L", "F"]
+    
+    # In ra các nước xáo trộn
+    print(f"Xáo trộn với các nước đi: {' '.join(scramble_moves)}")
+    
+    # Tạo trạng thái bị xáo trộn
+    scrambled_state = solved_state.copy()
+    for move in scramble_moves:
+        scrambled_state = scrambled_state.apply_move(move, moves_dict)
+    
+    print(f"Trạng thái ban đầu:")
+    if is_2x2:
+        print(f"cp: {scrambled_state.cp}")
+        print(f"co: {scrambled_state.co}")
+    else:
+        print(f"cp: {scrambled_state.cp}")
+        print(f"co: {scrambled_state.co}")
+        print(f"ep: {scrambled_state.ep}")
+        print(f"eo: {scrambled_state.eo}")
+    
+    # Tạo trạng thái ban đầu cho thuật toán giải 
+    if is_2x2:
+        # Lấy cp và co từ trạng thái bị xáo trộn
+        cp = scrambled_state.cp
+        co = scrambled_state.co
+        current_state = Rubik2x2State(cp, co)
+    else:
+        # Lấy cp, co, ep, eo từ trạng thái bị xáo trộn
+        cp = scrambled_state.cp
+        co = scrambled_state.co
+        ep = scrambled_state.ep
+        eo = scrambled_state.eo
+        current_state = RubikState(cp, co, ep, eo)
+    
+    # Gọi thuật toán giải
+    print(f"Đang giải bằng thuật toán {algorithm}...")
+    start_time = time.time()
+    
+    if algorithm.lower() == "bfs":
+        path, nodes_visited, time_taken = bfs(current_state)
+    else:  # a_star
+        path, nodes_visited, time_taken = a_star(current_state)
+    
+    # Kiểm tra kết quả
+    if path:
+        print(f"Đã tìm được lời giải trong {time_taken:.2f} giây")
+        print(f"Số nút đã duyệt: {nodes_visited}")
+        print(f"Độ dài lời giải: {len(path)}")
+        print(f"Lời giải: {' '.join(path)}")
+        
+        # Kiểm tra xem lời giải có đúng không
+        test_state = current_state.copy()
+        for move in path:
+            test_state = test_state.apply_move(move, moves_dict)
+        
+        # So sánh với trạng thái đã giải
+        is_solved = (test_state == solved_state)
+        print(f"Lời giải có đúng không? {'CÓ' if is_solved else 'KHÔNG'}")
+        
+        if not is_solved:
+            print("Trạng thái sau khi áp dụng lời giải:")
+            if is_2x2:
+                print(f"cp: {test_state.cp}")
+                print(f"co: {test_state.co}")
+            else:
+                print(f"cp: {test_state.cp}")
+                print(f"co: {test_state.co}")
+                print(f"ep: {test_state.ep}")
+                print(f"eo: {test_state.eo}")
+            
+            print("Trạng thái đã giải:")
+            if is_2x2:
+                print(f"cp: {solved_state.cp}")
+                print(f"co: {solved_state.co}")
+            else:
+                print(f"cp: {solved_state.cp}")
+                print(f"co: {solved_state.co}")
+                print(f"ep: {solved_state.ep}")
+                print(f"eo: {solved_state.eo}")
+        
+        return is_solved
+    else:
+        print(f"Không tìm thấy lời giải trong thời gian cho phép!")
+        return False
+
+def main():
+    # Test cho Rubik 2x2 với thuật toán BFS
+    test_solver(is_2x2=True, algorithm="bfs")
+    
+    # Test cho Rubik 2x2 với thuật toán A*
+    test_solver(is_2x2=True, algorithm="a_star")
+    
+    # Test cho Rubik 3x3 với thuật toán BFS (với chuỗi nước đi đơn giản)
+    test_solver(is_2x2=False, algorithm="bfs")
+    
+    # Test cho Rubik 3x3 với thuật toán A* (với chuỗi nước đi đơn giản)
+    test_solver(is_2x2=False, algorithm="a_star")
+    
+    # Test với các nước đi phức tạp hơn (tùy chỉnh)
+    complex_moves = ["R", "U", "R'", "U'", "R", "U", "R'", "U'", "F'", "L'", "F", "L"]
+    print("\n===== TEST VỚI CÁC NƯỚC ĐI PHỨC TẠP HƠN =====")
+    test_solver(is_2x2=True, algorithm="bfs", scramble_moves=complex_moves)
+
+if __name__ == "__main__":
+    main()

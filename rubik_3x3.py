@@ -1,7 +1,7 @@
 import numpy as np
 from OpenGL.GL import *
 from OpenGL.GLU import *
-from RubikState.rubik_chen import RubikState, SOLVED_STATE as SOLVED_STATE_3X3
+from RubikState.rubik_chen import RubikState, SOLVED_STATE_3x3
 
 class Piece:
     """
@@ -170,7 +170,15 @@ class RubikCube:
         self.rotation_y = 0  # Góc xoay quanh trục y
         
         # Khởi tạo trạng thái RubikState
-        self.state = SOLVED_STATE_3X3.copy()
+        self.state = SOLVED_STATE_3x3.copy()
+        
+        # Khởi tạo state_tuple trực tiếp
+        self.state_tuple = (
+            tuple(range(8)),  # cp: góc ở đúng vị trí
+            tuple([0] * 8),   # co: không có xoay góc
+            tuple(range(12)), # ep: cạnh ở đúng vị trí
+            tuple([0] * 12)   # eo: không có lật cạnh
+        )
         
         # Khởi tạo các khối
         self.pieces = []
@@ -301,11 +309,9 @@ class RubikCube:
         # Đảo ngược clockwise để khớp với quy ước của RubikState
         # Lưu ý: Chúng ta không cần đảo ngược thêm cho các mặt 'invert' ở đây
         # vì animation sẽ được hiển thị trực tiếp
-        clockwise = not clockwise
-        
-        self.animation_clockwise = clockwise
+        self.animation_clockwise = not clockwise
         self.animation_angle = 0
-        self.animation_target = 90 if clockwise else -90
+        self.animation_target = 90 if self.animation_clockwise else -90
         
     def _complete_rotation(self):
         """Hoàn thành phép xoay một mặt"""
@@ -347,9 +353,43 @@ class RubikCube:
         if not clockwise:
             move = f"{face}'"
             
-        # Cập nhật trạng thái trong RubikState
-        from RubikState.rubik_chen import MOVES as MOVES_3X3
-        self.state = self.state.apply_move(move, MOVES_3X3)
+        # Cập nhật trạng thái trong RubikState - KHÔNG ĐẢO NGƯỢC CLOCKWISE NỮA
+        from RubikState.rubik_chen import MOVES_3x3
+        
+        # Lưu lại trạng thái trước khi áp dụng nước đi
+        old_state = self.state.copy()
+        
+        # Áp dụng nước đi
+        self.state = old_state.apply_move(move, MOVES_3x3)
+        
+        # Cập nhật state_tuple trực tiếp dựa trên sự thay đổi giữa trạng thái cũ và mới
+        # Hoán vị góc (cp)
+        inverse_cp = [0] * 8
+        for i, pos in enumerate(self.state.cp):
+            inverse_cp[pos] = i
+            
+        # Định hướng góc (co)
+        inverse_co = [0] * 8
+        for i, pos in enumerate(self.state.cp):
+            inverse_co[pos] = (3 - self.state.co[i]) % 3
+            
+        # Hoán vị cạnh (ep)
+        inverse_ep = [0] * 12
+        for i, pos in enumerate(self.state.ep):
+            inverse_ep[pos] = i
+            
+        # Định hướng cạnh (eo)
+        inverse_eo = [0] * 12
+        for i, pos in enumerate(self.state.ep):
+            inverse_eo[pos] = (2 - self.state.eo[i]) % 2
+            
+        # Cập nhật state_tuple
+        self.state_tuple = (
+            tuple(inverse_cp),
+            tuple(inverse_co),
+            tuple(inverse_ep),
+            tuple(inverse_eo)
+        )
         
         # Reset trạng thái animation
         self.animating = False
@@ -367,7 +407,15 @@ class RubikCube:
         moves = []
         
         # Reset trạng thái về trạng thái đã giải
-        self.state = SOLVED_STATE_3X3.copy()
+        self.state = SOLVED_STATE_3x3.copy()
+        
+        # Trạng thái đã giải có state_tuple đơn giản
+        self.state_tuple = (
+            tuple(range(8)),  # cp: góc ở đúng vị trí
+            tuple([0] * 8),   # co: không có xoay góc
+            tuple(range(12)), # ep: cạnh ở đúng vị trí
+            tuple([0] * 12)   # eo: không có lật cạnh
+        )
         
         last_face = None
         for _ in range(num_moves):
@@ -383,8 +431,8 @@ class RubikCube:
             move = face
             if not clockwise:
                 move = face + "'"
-            from RubikState.rubik_chen import MOVES as MOVES_3X3
-            self.state = self.state.apply_move(move, MOVES_3X3)
+            from RubikState.rubik_chen import  MOVES_3x3
+            self.state = self.state.apply_move(move, MOVES_3x3)
         
         # Thực hiện move đầu tiên
         if moves:
@@ -494,8 +542,17 @@ class RubikCube:
 
     def get_state(self):
         """Trả về trạng thái hiện tại của Rubik"""
-        return self.state
-
+        # Tạo bản sao trạng thái để tránh thay đổi trạng thái gốc
+        corrected_state = self.state.copy()
+        
+        # Đảo ngược lại các nước đi để khớp với hướng thực tế
+        # Ví dụ: nếu phép quay U thực tế là theo chiều kim đồng hồ,
+        # nhưng đang được lưu là U' (ngược chiều), chúng ta cần chuyển về U
+        
+        # Vì không thể trực tiếp chuyển đổi trạng thái hiện tại, 
+        # chúng ta trả về bản sao của trạng thái gốc
+        return corrected_state
+        
     def get_corner_permutation(self):
         """Trả về hoán vị góc hiện tại của khối Rubik 3x3"""
         return self.state.cp
@@ -510,26 +567,17 @@ class RubikCube:
         
     def get_edge_orientation(self):
         """Trả về định hướng cạnh hiện tại của khối Rubik 3x3"""
-        return self.state.eo 
-        
+        return self.state.eo
+
     def get_state_tuple(self):
         """
         Trả về biểu diễn trạng thái của Rubik 3x3 dưới dạng 4 tuple.
         
-        Trạng thái này được cập nhật tự động mỗi khi phương thức _complete_rotation()
-        được gọi sau khi hoàn thành một phép xoay mặt.
+        Phương thức này được giữ lại để tương thích ngược với mã nguồn hiện có.
+        Nó chỉ đơn giản trả về thuộc tính state_tuple.
         
         Returns:
             tuple: (cp, co, ep, eo) - Tuple gồm các tuple con biểu diễn
                   hoán vị góc, định hướng góc, hoán vị cạnh, định hướng cạnh
         """
-        # Lấy trạng thái hiện tại
-        state = self.state
-        
-        # Trả về các tuple biểu diễn trạng thái
-        return (
-            state.cp,  # Corner permutation (hoán vị góc)
-            state.co,  # Corner orientation (định hướng góc)
-            state.ep,  # Edge permutation (hoán vị cạnh)
-            state.eo   # Edge orientation (định hướng cạnh)
-        ) 
+        return self.state_tuple 
