@@ -37,69 +37,48 @@ class ControlsWidget(QWidget):
         pass
 
     def init_ui(self):
-        # Main layout
+        # Main layout - Sử dụng QVBoxLayout cho toàn bộ widget
         main_layout = QVBoxLayout()
         
+        # ===== PHẦN TRÊN: ĐIỀU KHIỂN VÀ THÔNG TIN (chiếm 1/2 diện tích) =====
+        top_widget = QWidget()
+        top_layout = QHBoxLayout()
+        top_widget.setLayout(top_layout)
+        
+        # -- PHẦN 1: ĐIỀU KHIỂN CƠ BẢN (bên trái) --
+        basic_controls = QGroupBox("Điều khiển cơ bản")
+        basic_layout = QVBoxLayout()
+        
         # Input moves group
-        moves_group = QGroupBox("Input Moves")
-        moves_layout = QVBoxLayout()
-        self.moves_input = QLineEdit()
-        self.moves_input.setPlaceholderText("Enter moves (e.g. R U R' U')")
+        moves_input = QLineEdit()
+        moves_input.setPlaceholderText("Nhập nước đi (ví dụ: R U R' U')")
+        self.moves_input = moves_input
         # Kết nối sự kiện Enter với hàm apply_moves
         self.moves_input.returnPressed.connect(self.apply_moves)
         
-        apply_btn = QPushButton("Apply Moves")
+        apply_btn = QPushButton("Áp dụng")
         apply_btn.clicked.connect(self.apply_moves)
-        moves_layout.addWidget(self.moves_input)
-        moves_layout.addWidget(apply_btn)
-        moves_group.setLayout(moves_layout)
-        main_layout.addWidget(moves_group)
-
+        
+        basic_layout.addWidget(QLabel("Nhập nước đi:"))
+        basic_layout.addWidget(moves_input)
+        basic_layout.addWidget(apply_btn)
+        
         # Control buttons
         buttons_layout = QHBoxLayout()
         reset_btn = QPushButton("Reset")
-        shuffle_btn = QPushButton("Shuffle")
+        shuffle_btn = QPushButton("Xáo trộn")
         reset_btn.clicked.connect(self.reset_cube)
         shuffle_btn.clicked.connect(self.shuffle_cube)
         buttons_layout.addWidget(reset_btn)
         buttons_layout.addWidget(shuffle_btn)
-        main_layout.addLayout(buttons_layout)
+        basic_layout.addLayout(buttons_layout)
         
-        # Solver Algorithm group
-        solver_group = QGroupBox("Thuật toán giải")
-        solver_layout = QVBoxLayout()
-        
-        # Combobox để chọn thuật toán
-        self.algorithm_combo = QComboBox()
-        self.algorithm_combo.addItem("BFS (Breadth-First Search)")
-        self.algorithm_combo.addItem("A* (A-star)")
-        solver_layout.addWidget(QLabel("Chọn thuật toán:"))
-        solver_layout.addWidget(self.algorithm_combo)
-        
-        # Thêm các option cho A*
-        astar_options_layout = QHBoxLayout()
-        astar_options_layout.addWidget(QLabel("Giới hạn thời gian (giây):"))
-        self.time_limit_spin = QSpinBox()
-        self.time_limit_spin.setRange(1, 300)
-        self.time_limit_spin.setValue(30)
-        astar_options_layout.addWidget(self.time_limit_spin)
-        solver_layout.addLayout(astar_options_layout)
-        
-        # Nút giải Rubik
-        solve_btn = QPushButton("Giải Rubik")
-        solve_btn.clicked.connect(self.solve_rubik)
-        solver_layout.addWidget(solve_btn)
-        
-        solver_group.setLayout(solver_layout)
-        main_layout.addWidget(solver_group)
-        
-        # Solution Results group
-        solution_group = QGroupBox("Kết quả giải")
-        solution_layout = QVBoxLayout()
+        # Solution Results
+        basic_layout.addWidget(QLabel("Kết quả giải:"))
         
         # Hiển thị trạng thái giải
         self.solution_status = QLabel("Sẵn sàng")
-        solution_layout.addWidget(self.solution_status)
+        basic_layout.addWidget(self.solution_status)
         
         # Hiển thị thống kê
         stats_layout = QGridLayout()
@@ -114,37 +93,153 @@ class ControlsWidget(QWidget):
         stats_layout.addWidget(QLabel("Độ dài lời giải:"), 2, 0)
         self.solution_length = QLabel("0")
         stats_layout.addWidget(self.solution_length, 2, 1)
-        solution_layout.addLayout(stats_layout)
+        basic_layout.addLayout(stats_layout)
         
         # Hiển thị lời giải
-        solution_layout.addWidget(QLabel("Lời giải:"))
+        basic_layout.addWidget(QLabel("Lời giải:"))
         self.solution_moves = QTextEdit()
         self.solution_moves.setReadOnly(True)
-        self.solution_moves.setFixedHeight(80)
-        solution_layout.addWidget(self.solution_moves)
+        self.solution_moves.setFixedHeight(60)
+        basic_layout.addWidget(self.solution_moves)
         
         # Nút áp dụng lời giải
         apply_solution_btn = QPushButton("Áp dụng lời giải")
         apply_solution_btn.clicked.connect(self.apply_solution)
-        solution_layout.addWidget(apply_solution_btn)
+        basic_layout.addWidget(apply_solution_btn)
         
-        solution_group.setLayout(solution_layout)
-        main_layout.addWidget(solution_group)
+        basic_controls.setLayout(basic_layout)
         
-        # State Display panel
-        state_group = QGroupBox("Rubik State")
-        state_layout = QVBoxLayout()
+        # -- PHẦN 2: THÔNG TIN RUBIK (bên phải) --
+        info_panel = QGroupBox("Thông tin rubik")
+        info_layout = QVBoxLayout()
         
         # TextEdit để hiển thị trạng thái
         self.state_display = QTextEdit()
         self.state_display.setReadOnly(True)
-        self.state_display.setFixedHeight(200)  # Chiều cao cố định
-        state_layout.addWidget(self.state_display)
+        info_layout.addWidget(self.state_display)
         
-        state_group.setLayout(state_layout)
-        main_layout.addWidget(state_group)
+        info_panel.setLayout(info_layout)
         
-        main_layout.addStretch()
+        # Thêm hai phần vào top_layout
+        top_layout.addWidget(basic_controls, 1)  # Tỷ lệ 1
+        top_layout.addWidget(info_panel, 1)      # Tỷ lệ 1
+        
+        # ===== PHẦN DƯỚI: CÁC NHÓM THUẬT TOÁN (chiếm 1/2 diện tích) =====
+        algo_widget = QWidget()
+        algo_layout = QVBoxLayout()
+        algo_widget.setLayout(algo_layout)
+        
+        # Tiêu đề
+        algo_layout.addWidget(QLabel("<b>Các nhóm thuật toán</b>"))
+        
+        # Grid layout cho các nhóm thuật toán (3 cột)
+        algo_grid = QGridLayout()
+        
+        # Tạo button group để chỉ một radio được chọn
+        self.algorithm_button_group = QButtonGroup(self)
+        
+        # Nhóm 1: Tìm kiếm không có thông tin (Uninformed Search)
+        uninformed_group = QGroupBox("Tìm kiếm không có thông tin\n(Uninformed Search)")
+        uninformed_layout = QVBoxLayout()
+        
+        # Tạo các radio buttons cho nhóm 1
+        self.bfs_radio = QRadioButton("Breadth-First Search")
+        self.dfs_radio = QRadioButton("Depth-First Search")
+        self.ids_radio = QRadioButton("Iterative Deepening Search")
+        self.ucs_radio = QRadioButton("Uniform Cost Search")
+        
+        # Thêm vào button group
+        self.algorithm_button_group.addButton(self.bfs_radio, 0)
+        self.algorithm_button_group.addButton(self.dfs_radio, 1)
+        self.algorithm_button_group.addButton(self.ucs_radio, 2)
+        self.algorithm_button_group.addButton(self.ids_radio, 3)
+        
+        # Mặc định chọn BFS
+        self.bfs_radio.setChecked(True)
+        
+        # Thêm vào layout
+        uninformed_layout.addWidget(self.bfs_radio)
+        uninformed_layout.addWidget(self.dfs_radio)
+        uninformed_layout.addWidget(self.ucs_radio)
+        uninformed_layout.addWidget(self.ids_radio)
+        uninformed_group.setLayout(uninformed_layout)
+        
+        # Nhóm 2: Tìm kiếm có thông tin (Informed Search)
+        informed_group = QGroupBox("Tìm kiếm có thông tin\n(Informed Search)")
+        informed_layout = QVBoxLayout()
+        
+        # Tạo các radio buttons cho nhóm 2
+        self.astar_radio = QRadioButton("A* Search")
+        self.idastar_radio = QRadioButton("IDA* Search")
+        self.greedy_radio = QRadioButton("Greedy Best-First Search")
+        
+        # Thêm vào button group
+        self.algorithm_button_group.addButton(self.astar_radio, 4)
+        self.algorithm_button_group.addButton(self.idastar_radio, 5)
+        self.algorithm_button_group.addButton(self.greedy_radio, 6)
+        
+        # Thêm vào layout
+        informed_layout.addWidget(self.astar_radio)
+        informed_layout.addWidget(self.idastar_radio)
+        informed_layout.addWidget(self.greedy_radio)
+        informed_group.setLayout(informed_layout)
+        
+        # Nhóm 3: Tìm kiếm cục bộ (Local Search)
+        local_group = QGroupBox("Tìm kiếm cục bộ\n(Local Search)")
+        local_layout = QVBoxLayout()
+        
+        # Tạo các radio buttons cho nhóm 3
+        self.hill_climbing_max_radio = QRadioButton("Hill Climbing Max")
+        self.hill_climbing_random_radio = QRadioButton("Hill Climbing Random")
+        
+        # Thêm vào button group
+        self.algorithm_button_group.addButton(self.hill_climbing_max_radio, 7)
+        self.algorithm_button_group.addButton(self.hill_climbing_random_radio, 8)
+        
+        # Thêm vào layout
+        local_layout.addWidget(self.hill_climbing_max_radio)
+        local_layout.addWidget(self.hill_climbing_random_radio)
+        local_group.setLayout(local_layout)
+        
+        # Thêm các nhóm vào grid layout (1 hàng, 3 cột)
+        algo_grid.addWidget(uninformed_group, 0, 0)
+        algo_grid.addWidget(informed_group, 0, 1)
+        algo_grid.addWidget(local_group, 0, 2)
+        
+        # Để tiện cho việc thêm các nhóm mới, còn để trống hàng thứ 2
+        # algo_grid.addWidget(new_group1, 1, 0)
+        # algo_grid.addWidget(new_group2, 1, 1)
+        # algo_grid.addWidget(new_group3, 1, 2)
+        
+        algo_layout.addLayout(algo_grid)
+        
+        # Thêm options cho các thuật toán
+        options_layout = QHBoxLayout()
+        options_layout.addWidget(QLabel("Giới hạn thời gian (giây):"))
+        self.time_limit_spin = QSpinBox()
+        self.time_limit_spin.setRange(1, 300)
+        self.time_limit_spin.setValue(30)
+        options_layout.addWidget(self.time_limit_spin)
+        options_layout.addStretch()
+        
+        # Nút giải Rubik
+        solve_btn = QPushButton("Giải Rubik")
+        solve_btn.clicked.connect(self.solve_rubik)
+        options_layout.addWidget(solve_btn)
+        
+        algo_layout.addLayout(options_layout)
+        
+        # Thêm các phần chính vào main_layout với tỷ lệ 1:1
+        splitter = QSplitter(Qt.Vertical)
+        splitter.addWidget(top_widget)
+        splitter.addWidget(algo_widget)
+        
+        # Cài đặt tỷ lệ ban đầu 1:1 (50:50)
+        splitter.setSizes([500, 500])
+        
+        # Thêm splitter vào layout chính
+        main_layout.addWidget(splitter)
+        
         self.setLayout(main_layout)
         
         # Lưu trữ lời giải hiện tại
@@ -338,21 +433,62 @@ class ControlsWidget(QWidget):
             moves_dict = MOVES_3x3
             solved_state = SOLVED_STATE_3x3
         
-        # Lấy thuật toán đã chọn
-        algorithm_index = self.algorithm_combo.currentIndex()
-        time_limit = self.time_limit_spin.value()
+        # Xác định thuật toán đã chọn
+        algorithm_id = self.algorithm_button_group.checkedId()
+        
+        # Ánh xạ ID với các thuật toán
+        algorithm_map = {
+            0: ("BFS", "bfs"),
+            1: ("DFS", "dfs"),
+            2: ("UCS", "ucs"),
+            3: ("IDS", "ids"),
+            4: ("A*", "a_star"),
+            5: ("IDA*", "ida_star"),
+            6: ("Greedy Best-First", "greedy_best_first"),
+            7: ("Hill Climbing Max", "hill_climbing_max"),
+            8: ("Hill Climbing Random", "hill_climbing_random")
+        }
+        
+        if algorithm_id not in algorithm_map:
+            self.solution_status.setText("Lỗi: Không tìm thấy thuật toán đã chọn!")
+            return
+        
+        algorithm_name, algorithm_func_name = algorithm_map[algorithm_id]
         
         # Hiển thị thông tin về trạng thái giải
         cube_type = "Rubik 2x2" if self.is_2x2 else "Rubik 3x3"
-        algorithm_type = "BFS" if algorithm_index == 0 else "A*"
-        self.solution_status.setText(f"Đang giải {cube_type} bằng {algorithm_type}...")
+        self.solution_status.setText(f"Đang giải {cube_type} bằng {algorithm_name}...")
         
         # Chạy thuật toán giải
+        time_limit = self.time_limit_spin.value()
         try:
-            from RubikState.rubik_solver import bfs, a_star
+            # Import các thuật toán từ module
+            from RubikState.rubik_solver import (
+                bfs, dfs, ucs, ids, a_star, ida_star,
+                greedy_best_first, hill_climbing_max, hill_climbing_random
+            )
+            
+            # Ánh xạ tên thuật toán với hàm tương ứng
+            algorithm_funcs = {
+                "bfs": bfs,
+                "dfs": dfs,
+                "ucs": ucs,
+                "ids": ids,
+                "a_star": a_star,
+                "ida_star": ida_star,
+                "greedy_best_first": greedy_best_first,
+                "hill_climbing_max": hill_climbing_max,
+                "hill_climbing_random": hill_climbing_random
+            }
+            
+            # Lấy hàm thuật toán dựa trên tên
+            algorithm_func = algorithm_funcs.get(algorithm_func_name)
+            if not algorithm_func:
+                self.solution_status.setText(f"Lỗi: Thuật toán {algorithm_func_name} chưa được triển khai!")
+                return
             
             start_time = time.time()
-            path, nodes_visited, time_taken = bfs(current_state) if algorithm_index == 0 else a_star(current_state)
+            path, nodes_visited, time_taken = algorithm_func(current_state)
             end_time = time.time()
             
             # Xử lý timeout
@@ -385,6 +521,7 @@ class ControlsWidget(QWidget):
                 self.nodes_visited.setText(f"{nodes_visited}")
         except Exception as e:
             self.solution_status.setText(f"Lỗi: {str(e)}")
+            print(f"Lỗi khi giải Rubik: {e}")
     
     def apply_solution(self):
         # Gỡ lỗi
