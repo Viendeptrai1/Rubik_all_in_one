@@ -230,16 +230,955 @@ def bfs(start_state, goal_state=None, moves_dict=None):
     else:
         raise ValueError("Trạng thái đầu vào không phải là RubikState hoặc Rubik2x2State")
 
+def dfs_3x3(start_state, goal_state=None, moves_dict=None, max_depth=15):
+    """
+    Thuật toán DFS để giải Rubik's cube 3x3
+    
+    Args:
+        start_state: Trạng thái bắt đầu
+        goal_state: Trạng thái đích (mặc định là SOLVED_STATE_3X3)
+        moves_dict: Từ điển nước đi (mặc định là MOVES_3X3)
+        max_depth: Độ sâu tối đa của DFS
+    
+    Returns:
+        tuple: (đường đi, số node đã duyệt, thời gian)
+    """
+    if goal_state is None:
+        goal_state = SOLVED_STATE_3x3
+    
+    if moves_dict is None:
+        moves_dict = MOVES_3x3
+    
+    # Lấy danh sách tên nước đi từ moves_dict
+    move_names = list(moves_dict.keys())
+    
+    # Đếm số node đã duyệt
+    nodes_visited = 0
+    
+    stack = [(start_state, [], 0)]  # (state, path, depth)
+    visited = {start_state}
+    
+    start_time = time.time()
+    while stack:
+        state, path, depth = stack.pop()
+        
+        if state == goal_state:
+            end_time = time.time()
+            return path, nodes_visited, end_time - start_time
+        
+        # Kiểm tra độ sâu
+        if depth < max_depth:
+            # Thêm các nước đi theo thứ tự ngược lại để ưu tiên các nước đầu
+            for move in reversed(move_names):
+                nodes_visited += 1
+                new_state = state.apply_move(move, moves_dict)
+                
+                if new_state not in visited:
+                    visited.add(new_state)
+                    stack.append((new_state, path + [move], depth + 1))
+        
+        if time.time() - start_time > 30:  # Giới hạn thời gian 30 giây
+            return None, nodes_visited, time.time() - start_time
+    
+    return None, nodes_visited, time.time() - start_time
 
-# test_rubik_solver.py
+def dfs_2x2(start_state, goal_state=None, moves_dict=None, max_depth=10):
+    """
+    Thuật toán DFS để giải Rubik's cube 2x2
+    
+    Args:
+        start_state: Trạng thái bắt đầu
+        goal_state: Trạng thái đích (mặc định là SOLVED_STATE_2X2)
+        moves_dict: Từ điển nước đi (mặc định là MOVES_2X2)
+        max_depth: Độ sâu tối đa của DFS
+    
+    Returns:
+        tuple: (đường đi, số node đã duyệt, thời gian)
+    """
+    if goal_state is None:
+        goal_state = SOLVED_STATE_2x2
+    
+    if moves_dict is None:
+        moves_dict = MOVES_2x2
+    
+    # Lấy danh sách tên nước đi từ moves_dict
+    move_names = list(moves_dict.keys())
+    
+    # Đếm số node đã duyệt
+    nodes_visited = 0
+    
+    stack = [(start_state, [], 0)]  # (state, path, depth)
+    visited = {start_state}
+    
+    start_time = time.time()
+    while stack:
+        state, path, depth = stack.pop()
+        
+        if state == goal_state:
+            end_time = time.time()
+            return path, nodes_visited, end_time - start_time
+        
+        # Kiểm tra độ sâu
+        if depth < max_depth:
+            # Thêm các nước đi theo thứ tự ngược lại để ưu tiên các nước đầu
+            for move in reversed(move_names):
+                nodes_visited += 1
+                new_state = state.apply_move(move, moves_dict)
+                
+                if new_state not in visited:
+                    visited.add(new_state)
+                    stack.append((new_state, path + [move], depth + 1))
+        
+        if time.time() - start_time > 30:  # Giới hạn thời gian 30 giây
+            return None, nodes_visited, time.time() - start_time
+    
+    return None, nodes_visited, time.time() - start_time
 
+def dfs(start_state, goal_state=None, moves_dict=None):
+    """
+    Tự động gọi thuật toán DFS phù hợp dựa vào kiểu của trạng thái đầu vào
+    """
+    if isinstance(start_state, RubikState):
+        return dfs_3x3(start_state, goal_state, moves_dict)
+    elif isinstance(start_state, Rubik2x2State):
+        return dfs_2x2(start_state, goal_state, moves_dict)
+    else:
+        raise ValueError("Trạng thái đầu vào không phải là RubikState hoặc Rubik2x2State")
+
+def ucs_3x3(start_state, goal_state=None, moves_dict=None):
+    """
+    Thuật toán UCS (Uniform Cost Search) để giải Rubik's cube 3x3
+    
+    Args:
+        start_state: Trạng thái bắt đầu
+        goal_state: Trạng thái đích (mặc định là SOLVED_STATE_3X3)
+        moves_dict: Từ điển nước đi (mặc định là MOVES_3X3)
+    
+    Returns:
+        tuple: (đường đi, số node đã duyệt, thời gian)
+    """
+    if goal_state is None:
+        goal_state = SOLVED_STATE_3x3
+    
+    if moves_dict is None:
+        moves_dict = MOVES_3x3
+    
+    # Lấy danh sách tên nước đi từ moves_dict
+    move_names = list(moves_dict.keys())
+    
+    # Đếm số node đã duyệt
+    nodes_visited = 0
+    
+    # Priority queue với cost là độ dài đường đi
+    counter = 0  # Dùng để break ties
+    queue = [(0, counter, start_state, [])]  # (cost, counter, state, path)
+    visited = {start_state: 0}
+    
+    start_time = time.time()
+    while queue:
+        cost, _, state, path = heapq.heappop(queue)
+        
+        if state == goal_state:
+            end_time = time.time()
+            return path, nodes_visited, end_time - start_time
+        
+        for move in move_names:
+            nodes_visited += 1
+            new_state = state.apply_move(move, moves_dict)
+            new_cost = cost + 1  # Mỗi bước có chi phí = 1
+            
+            if new_state not in visited or new_cost < visited[new_state]:
+                visited[new_state] = new_cost
+                counter += 1
+                heapq.heappush(queue, (new_cost, counter, new_state, path + [move]))
+        
+        if time.time() - start_time > 30:  # Giới hạn thời gian 30 giây
+            return None, nodes_visited, time.time() - start_time
+    
+    return None, nodes_visited, time.time() - start_time
+
+def ucs_2x2(start_state, goal_state=None, moves_dict=None):
+    """
+    Thuật toán UCS (Uniform Cost Search) để giải Rubik's cube 2x2
+    
+    Args:
+        start_state: Trạng thái bắt đầu
+        goal_state: Trạng thái đích (mặc định là SOLVED_STATE_2X2)
+        moves_dict: Từ điển nước đi (mặc định là MOVES_2X2)
+    
+    Returns:
+        tuple: (đường đi, số node đã duyệt, thời gian)
+    """
+    if goal_state is None:
+        goal_state = SOLVED_STATE_2x2
+    
+    if moves_dict is None:
+        moves_dict = MOVES_2x2
+    
+    # Lấy danh sách tên nước đi từ moves_dict
+    move_names = list(moves_dict.keys())
+    
+    # Đếm số node đã duyệt
+    nodes_visited = 0
+    
+    # Priority queue với cost là độ dài đường đi
+    counter = 0  # Dùng để break ties
+    queue = [(0, counter, start_state, [])]  # (cost, counter, state, path)
+    visited = {start_state: 0}
+    
+    start_time = time.time()
+    while queue:
+        cost, _, state, path = heapq.heappop(queue)
+        
+        if state == goal_state:
+            end_time = time.time()
+            return path, nodes_visited, end_time - start_time
+        
+        for move in move_names:
+            nodes_visited += 1
+            new_state = state.apply_move(move, moves_dict)
+            new_cost = cost + 1  # Mỗi bước có chi phí = 1
+            
+            if new_state not in visited or new_cost < visited[new_state]:
+                visited[new_state] = new_cost
+                counter += 1
+                heapq.heappush(queue, (new_cost, counter, new_state, path + [move]))
+        
+        if time.time() - start_time > 30:  # Giới hạn thời gian 30 giây
+            return None, nodes_visited, time.time() - start_time
+    
+    return None, nodes_visited, time.time() - start_time
+
+def ids_3x3(start_state, goal_state=None, moves_dict=None, max_depth=15):
+    """
+    Thuật toán IDS (Iterative Deepening Search) để giải Rubik's cube 3x3
+    
+    Args:
+        start_state: Trạng thái bắt đầu
+        goal_state: Trạng thái đích (mặc định là SOLVED_STATE_3X3)
+        moves_dict: Từ điển nước đi (mặc định là MOVES_3X3)
+        max_depth: Độ sâu tối đa của IDS
+    
+    Returns:
+        tuple: (đường đi, số node đã duyệt, thời gian)
+    """
+    if goal_state is None:
+        goal_state = SOLVED_STATE_3x3
+    
+    if moves_dict is None:
+        moves_dict = MOVES_3x3
+    
+    # Lấy danh sách tên nước đi từ moves_dict
+    move_names = list(moves_dict.keys())
+    
+    # Đếm số node đã duyệt
+    nodes_visited = 0
+    
+    # Hàm dfs giới hạn độ sâu (dls)
+    def dls(state, depth, path):
+        nonlocal nodes_visited
+        
+        if state == goal_state:
+            return path
+        
+        if depth == 0:
+            return None
+        
+        for move in move_names:
+            nodes_visited += 1
+            new_state = state.apply_move(move, moves_dict)
+            result = dls(new_state, depth - 1, path + [move])
+            
+            if result is not None:
+                return result
+        
+        return None
+    
+    start_time = time.time()
+    
+    # Tăng dần độ sâu từ 1 đến max_depth
+    for depth in range(1, max_depth + 1):
+        result = dls(start_state, depth, [])
+        
+        if result is not None:
+            end_time = time.time()
+            return result, nodes_visited, end_time - start_time
+        
+        if time.time() - start_time > 30:  # Giới hạn thời gian 30 giây
+            return None, nodes_visited, time.time() - start_time
+    
+    return None, nodes_visited, time.time() - start_time
+
+def ids_2x2(start_state, goal_state=None, moves_dict=None, max_depth=10):
+    """
+    Thuật toán IDS (Iterative Deepening Search) để giải Rubik's cube 2x2
+    
+    Args:
+        start_state: Trạng thái bắt đầu
+        goal_state: Trạng thái đích (mặc định là SOLVED_STATE_2X2)
+        moves_dict: Từ điển nước đi (mặc định là MOVES_2X2)
+        max_depth: Độ sâu tối đa của IDS
+    
+    Returns:
+        tuple: (đường đi, số node đã duyệt, thời gian)
+    """
+    if goal_state is None:
+        goal_state = SOLVED_STATE_2x2
+    
+    if moves_dict is None:
+        moves_dict = MOVES_2x2
+    
+    # Lấy danh sách tên nước đi từ moves_dict
+    move_names = list(moves_dict.keys())
+    
+    # Đếm số node đã duyệt
+    nodes_visited = 0
+    
+    # Hàm dfs giới hạn độ sâu (dls)
+    def dls(state, depth, path):
+        nonlocal nodes_visited
+        
+        if state == goal_state:
+            return path
+        
+        if depth == 0:
+            return None
+        
+        for move in move_names:
+            nodes_visited += 1
+            new_state = state.apply_move(move, moves_dict)
+            result = dls(new_state, depth - 1, path + [move])
+            
+            if result is not None:
+                return result
+        
+        return None
+    
+    start_time = time.time()
+    
+    # Tăng dần độ sâu từ 1 đến max_depth
+    for depth in range(1, max_depth + 1):
+        result = dls(start_state, depth, [])
+        
+        if result is not None:
+            end_time = time.time()
+            return result, nodes_visited, end_time - start_time
+        
+        if time.time() - start_time > 30:  # Giới hạn thời gian 30 giây
+            return None, nodes_visited, time.time() - start_time
+    
+    return None, nodes_visited, time.time() - start_time
+
+def ucs(start_state, goal_state=None, moves_dict=None):
+    """
+    Tự động gọi thuật toán UCS phù hợp dựa vào kiểu của trạng thái đầu vào
+    """
+    if isinstance(start_state, RubikState):
+        return ucs_3x3(start_state, goal_state, moves_dict)
+    elif isinstance(start_state, Rubik2x2State):
+        return ucs_2x2(start_state, goal_state, moves_dict)
+    else:
+        raise ValueError("Trạng thái đầu vào không phải là RubikState hoặc Rubik2x2State")
+
+def ids(start_state, goal_state=None, moves_dict=None):
+    """
+    Tự động gọi thuật toán IDS phù hợp dựa vào kiểu của trạng thái đầu vào
+    """
+    if isinstance(start_state, RubikState):
+        return ids_3x3(start_state, goal_state, moves_dict)
+    elif isinstance(start_state, Rubik2x2State):
+        return ids_2x2(start_state, goal_state, moves_dict)
+    else:
+        raise ValueError("Trạng thái đầu vào không phải là RubikState hoặc Rubik2x2State")
+
+def greedy_best_first_3x3(start_state, goal_state=None, moves_dict=None):
+    """
+    Thuật toán Greedy Best-First Search để giải Rubik's cube 3x3
+    
+    Args:
+        start_state: Trạng thái bắt đầu
+        goal_state: Trạng thái đích (mặc định là SOLVED_STATE_3X3)
+        moves_dict: Từ điển nước đi (mặc định là MOVES_3X3)
+    
+    Returns:
+        tuple: (đường đi, số node đã duyệt, thời gian)
+    """
+    if goal_state is None:
+        goal_state = SOLVED_STATE_3x3
+    
+    if moves_dict is None:
+        moves_dict = MOVES_3x3
+    
+    # Lấy danh sách tên nước đi từ moves_dict
+    move_names = list(moves_dict.keys())
+    
+    # Đếm số node đã duyệt
+    nodes_visited = 0
+    
+    # Priority queue chỉ dựa trên heuristic
+    counter = 0  # Dùng để break ties
+    queue = [(heuristic_3x3(start_state), counter, start_state, [])]
+    visited = {start_state}
+    counter += 1
+    
+    start_time = time.time()
+    while queue:
+        _, _, state, path = heapq.heappop(queue)
+        
+        if state == goal_state:
+            end_time = time.time()
+            return path, nodes_visited, end_time - start_time
+        
+        for move in move_names:
+            nodes_visited += 1
+            new_state = state.apply_move(move, moves_dict)
+            
+            if new_state not in visited:
+                visited.add(new_state)
+                h_score = heuristic_3x3(new_state)
+                counter += 1
+                heapq.heappush(queue, (h_score, counter, new_state, path + [move]))
+        
+        if time.time() - start_time > 30:  # Giới hạn thời gian 30 giây
+            return None, nodes_visited, time.time() - start_time
+    
+    return None, nodes_visited, time.time() - start_time
+
+def greedy_best_first_2x2(start_state, goal_state=None, moves_dict=None):
+    """
+    Thuật toán Greedy Best-First Search để giải Rubik's cube 2x2
+    
+    Args:
+        start_state: Trạng thái bắt đầu
+        goal_state: Trạng thái đích (mặc định là SOLVED_STATE_2X2)
+        moves_dict: Từ điển nước đi (mặc định là MOVES_2X2)
+    
+    Returns:
+        tuple: (đường đi, số node đã duyệt, thời gian)
+    """
+    if goal_state is None:
+        goal_state = SOLVED_STATE_2x2
+    
+    if moves_dict is None:
+        moves_dict = MOVES_2x2
+    
+    # Lấy danh sách tên nước đi từ moves_dict
+    move_names = list(moves_dict.keys())
+    
+    # Đếm số node đã duyệt
+    nodes_visited = 0
+    
+    # Priority queue chỉ dựa trên heuristic
+    counter = 0  # Dùng để break ties
+    queue = [(heuristic_2x2(start_state), counter, start_state, [])]
+    visited = {start_state}
+    counter += 1
+    
+    start_time = time.time()
+    while queue:
+        _, _, state, path = heapq.heappop(queue)
+        
+        if state == goal_state:
+            end_time = time.time()
+            return path, nodes_visited, end_time - start_time
+        
+        for move in move_names:
+            nodes_visited += 1
+            new_state = state.apply_move(move, moves_dict)
+            
+            if new_state not in visited:
+                visited.add(new_state)
+                h_score = heuristic_2x2(new_state)
+                counter += 1
+                heapq.heappush(queue, (h_score, counter, new_state, path + [move]))
+        
+        if time.time() - start_time > 30:  # Giới hạn thời gian 30 giây
+            return None, nodes_visited, time.time() - start_time
+    
+    return None, nodes_visited, time.time() - start_time
+
+def ida_star_3x3(start_state, goal_state=None, moves_dict=None):
+    """
+    Thuật toán IDA* (Iterative Deepening A*) để giải Rubik's cube 3x3
+    
+    Args:
+        start_state: Trạng thái bắt đầu
+        goal_state: Trạng thái đích (mặc định là SOLVED_STATE_3X3)
+        moves_dict: Từ điển nước đi (mặc định là MOVES_3X3)
+    
+    Returns:
+        tuple: (đường đi, số node đã duyệt, thời gian)
+    """
+    if goal_state is None:
+        goal_state = SOLVED_STATE_3x3
+    
+    if moves_dict is None:
+        moves_dict = MOVES_3x3
+    
+    # Lấy danh sách tên nước đi từ moves_dict
+    move_names = list(moves_dict.keys())
+    
+    # Đếm số node đã duyệt
+    nodes_visited = 0
+    
+    # Hàm dfs có giới hạn (f-limit)
+    def search(state, g, path, f_limit):
+        nonlocal nodes_visited
+        
+        f = g + heuristic_3x3(state)
+        
+        if f > f_limit:
+            return f, None
+        
+        if state == goal_state:
+            return -1, path
+        
+        min_cost = float('inf')
+        
+        for move in move_names:
+            nodes_visited += 1
+            new_state = state.apply_move(move, moves_dict)
+            new_cost, new_path = search(new_state, g + 1, path + [move], f_limit)
+            
+            if new_cost == -1:  # Đã tìm thấy đường đi
+                return -1, new_path
+            
+            if new_cost < min_cost:
+                min_cost = new_cost
+        
+        return min_cost, None
+    
+    start_time = time.time()
+    
+    # IDA* bắt đầu với f_limit = h(start)
+    f_limit = heuristic_3x3(start_state)
+    
+    while True:
+        cost, path = search(start_state, 0, [], f_limit)
+        
+        if cost == -1:  # Đã tìm thấy đường đi
+            end_time = time.time()
+            return path, nodes_visited, end_time - start_time
+        
+        if cost == float('inf'):  # Không có đường đi
+            return None, nodes_visited, time.time() - start_time
+        
+        # Tăng f_limit cho vòng lặp tiếp theo
+        f_limit = cost
+        
+        if time.time() - start_time > 30:  # Giới hạn thời gian 30 giây
+            return None, nodes_visited, time.time() - start_time
+
+def ida_star_2x2(start_state, goal_state=None, moves_dict=None):
+    """
+    Thuật toán IDA* (Iterative Deepening A*) để giải Rubik's cube 2x2
+    
+    Args:
+        start_state: Trạng thái bắt đầu
+        goal_state: Trạng thái đích (mặc định là SOLVED_STATE_2X2)
+        moves_dict: Từ điển nước đi (mặc định là MOVES_2X2)
+    
+    Returns:
+        tuple: (đường đi, số node đã duyệt, thời gian)
+    """
+    if goal_state is None:
+        goal_state = SOLVED_STATE_2x2
+    
+    if moves_dict is None:
+        moves_dict = MOVES_2x2
+    
+    # Lấy danh sách tên nước đi từ moves_dict
+    move_names = list(moves_dict.keys())
+    
+    # Đếm số node đã duyệt
+    nodes_visited = 0
+    
+    # Hàm dfs có giới hạn (f-limit)
+    def search(state, g, path, f_limit):
+        nonlocal nodes_visited
+        
+        f = g + heuristic_2x2(state)
+        
+        if f > f_limit:
+            return f, None
+        
+        if state == goal_state:
+            return -1, path
+        
+        min_cost = float('inf')
+        
+        for move in move_names:
+            nodes_visited += 1
+            new_state = state.apply_move(move, moves_dict)
+            new_cost, new_path = search(new_state, g + 1, path + [move], f_limit)
+            
+            if new_cost == -1:  # Đã tìm thấy đường đi
+                return -1, new_path
+            
+            if new_cost < min_cost:
+                min_cost = new_cost
+        
+        return min_cost, None
+    
+    start_time = time.time()
+    
+    # IDA* bắt đầu với f_limit = h(start)
+    f_limit = heuristic_2x2(start_state)
+    
+    while True:
+        cost, path = search(start_state, 0, [], f_limit)
+        
+        if cost == -1:  # Đã tìm thấy đường đi
+            end_time = time.time()
+            return path, nodes_visited, end_time - start_time
+        
+        if cost == float('inf'):  # Không có đường đi
+            return None, nodes_visited, time.time() - start_time
+        
+        # Tăng f_limit cho vòng lặp tiếp theo
+        f_limit = cost
+        
+        if time.time() - start_time > 30:  # Giới hạn thời gian 30 giây
+            return None, nodes_visited, time.time() - start_time
+
+def hill_climbing_max_3x3(start_state, goal_state=None, moves_dict=None, max_iterations=1000):
+    """
+    Thuật toán Hill Climbing Max để giải Rubik's cube 3x3
+    
+    Args:
+        start_state: Trạng thái bắt đầu
+        goal_state: Trạng thái đích (mặc định là SOLVED_STATE_3X3)
+        moves_dict: Từ điển nước đi (mặc định là MOVES_3X3)
+        max_iterations: Số lần lặp tối đa
+    
+    Returns:
+        tuple: (đường đi, số node đã duyệt, thời gian)
+    """
+    if goal_state is None:
+        goal_state = SOLVED_STATE_3x3
+    
+    if moves_dict is None:
+        moves_dict = MOVES_3x3
+    
+    # Lấy danh sách tên nước đi từ moves_dict
+    move_names = list(moves_dict.keys())
+    
+    # Đếm số node đã duyệt
+    nodes_visited = 0
+    
+    current_state = start_state
+    current_h = heuristic_3x3(current_state)
+    path = []
+    
+    start_time = time.time()
+    
+    # Lặp cho đến khi đạt mục tiêu hoặc không thể cải thiện thêm
+    for _ in range(max_iterations):
+        if current_state == goal_state:
+            end_time = time.time()
+            return path, nodes_visited, end_time - start_time
+        
+        # Tìm neighbor tối ưu nhất
+        best_neighbor = None
+        best_move = None
+        best_h = current_h
+        
+        for move in move_names:
+            nodes_visited += 1
+            neighbor = current_state.apply_move(move, moves_dict)
+            neighbor_h = heuristic_3x3(neighbor)
+            
+            # Tìm neighbor có heuristic nhỏ nhất (tốt nhất)
+            if neighbor_h < best_h:
+                best_neighbor = neighbor
+                best_move = move
+                best_h = neighbor_h
+        
+        # Nếu không thể cải thiện, kết thúc
+        if best_neighbor is None:
+            break
+        
+        # Di chuyển đến trạng thái tốt nhất
+        current_state = best_neighbor
+        current_h = best_h
+        path.append(best_move)
+        
+        if time.time() - start_time > 30:  # Giới hạn thời gian 30 giây
+            return None, nodes_visited, time.time() - start_time
+    
+    # Nếu tìm thấy đường đi đến đích, trả về
+    if current_state == goal_state:
+        end_time = time.time()
+        return path, nodes_visited, end_time - start_time
+    
+    # Không tìm thấy đường đi
+    return None, nodes_visited, time.time() - start_time
+
+def hill_climbing_max_2x2(start_state, goal_state=None, moves_dict=None, max_iterations=1000):
+    """
+    Thuật toán Hill Climbing Max để giải Rubik's cube 2x2
+    
+    Args:
+        start_state: Trạng thái bắt đầu
+        goal_state: Trạng thái đích (mặc định là SOLVED_STATE_2X2)
+        moves_dict: Từ điển nước đi (mặc định là MOVES_2X2)
+        max_iterations: Số lần lặp tối đa
+    
+    Returns:
+        tuple: (đường đi, số node đã duyệt, thời gian)
+    """
+    if goal_state is None:
+        goal_state = SOLVED_STATE_2x2
+    
+    if moves_dict is None:
+        moves_dict = MOVES_2x2
+    
+    # Lấy danh sách tên nước đi từ moves_dict
+    move_names = list(moves_dict.keys())
+    
+    # Đếm số node đã duyệt
+    nodes_visited = 0
+    
+    current_state = start_state
+    current_h = heuristic_2x2(current_state)
+    path = []
+    
+    start_time = time.time()
+    
+    # Lặp cho đến khi đạt mục tiêu hoặc không thể cải thiện thêm
+    for _ in range(max_iterations):
+        if current_state == goal_state:
+            end_time = time.time()
+            return path, nodes_visited, end_time - start_time
+        
+        # Tìm neighbor tối ưu nhất
+        best_neighbor = None
+        best_move = None
+        best_h = current_h
+        
+        for move in move_names:
+            nodes_visited += 1
+            neighbor = current_state.apply_move(move, moves_dict)
+            neighbor_h = heuristic_2x2(neighbor)
+            
+            # Tìm neighbor có heuristic nhỏ nhất (tốt nhất)
+            if neighbor_h < best_h:
+                best_neighbor = neighbor
+                best_move = move
+                best_h = neighbor_h
+        
+        # Nếu không thể cải thiện, kết thúc
+        if best_neighbor is None:
+            break
+        
+        # Di chuyển đến trạng thái tốt nhất
+        current_state = best_neighbor
+        current_h = best_h
+        path.append(best_move)
+        
+        if time.time() - start_time > 30:  # Giới hạn thời gian 30 giây
+            return None, nodes_visited, time.time() - start_time
+    
+    # Nếu tìm thấy đường đi đến đích, trả về
+    if current_state == goal_state:
+        end_time = time.time()
+        return path, nodes_visited, end_time - start_time
+    
+    # Không tìm thấy đường đi
+    return None, nodes_visited, time.time() - start_time
+
+def hill_climbing_random_3x3(start_state, goal_state=None, moves_dict=None, max_iterations=1000):
+    """
+    Thuật toán Hill Climbing Random để giải Rubik's cube 3x3
+    
+    Args:
+        start_state: Trạng thái bắt đầu
+        goal_state: Trạng thái đích (mặc định là SOLVED_STATE_3X3)
+        moves_dict: Từ điển nước đi (mặc định là MOVES_3X3)
+        max_iterations: Số lần lặp tối đa
+    
+    Returns:
+        tuple: (đường đi, số node đã duyệt, thời gian)
+    """
+    if goal_state is None:
+        goal_state = SOLVED_STATE_3x3
+    
+    if moves_dict is None:
+        moves_dict = MOVES_3x3
+    
+    # Lấy danh sách tên nước đi từ moves_dict
+    move_names = list(moves_dict.keys())
+    
+    # Đếm số node đã duyệt
+    nodes_visited = 0
+    
+    import random
+    
+    current_state = start_state
+    current_h = heuristic_3x3(current_state)
+    path = []
+    
+    start_time = time.time()
+    
+    # Lặp cho đến khi đạt mục tiêu hoặc không thể cải thiện thêm
+    for _ in range(max_iterations):
+        if current_state == goal_state:
+            end_time = time.time()
+            return path, nodes_visited, end_time - start_time
+        
+        # Tìm tất cả các neighbor có heuristic tốt hơn
+        better_neighbors = []
+        
+        for move in move_names:
+            nodes_visited += 1
+            neighbor = current_state.apply_move(move, moves_dict)
+            neighbor_h = heuristic_3x3(neighbor)
+            
+            # Tìm neighbor có heuristic tốt hơn
+            if neighbor_h < current_h:
+                better_neighbors.append((neighbor, move, neighbor_h))
+        
+        # Nếu không thể cải thiện, kết thúc
+        if not better_neighbors:
+            break
+        
+        # Chọn ngẫu nhiên một neighbor tốt hơn
+        chosen = random.choice(better_neighbors)
+        current_state, best_move, current_h = chosen
+        path.append(best_move)
+        
+        if time.time() - start_time > 30:  # Giới hạn thời gian 30 giây
+            return None, nodes_visited, time.time() - start_time
+    
+    # Nếu tìm thấy đường đi đến đích, trả về
+    if current_state == goal_state:
+        end_time = time.time()
+        return path, nodes_visited, end_time - start_time
+    
+    # Không tìm thấy đường đi
+    return None, nodes_visited, time.time() - start_time
+
+def hill_climbing_random_2x2(start_state, goal_state=None, moves_dict=None, max_iterations=1000):
+    """
+    Thuật toán Hill Climbing Random để giải Rubik's cube 2x2
+    
+    Args:
+        start_state: Trạng thái bắt đầu
+        goal_state: Trạng thái đích (mặc định là SOLVED_STATE_2X2)
+        moves_dict: Từ điển nước đi (mặc định là MOVES_2X2)
+        max_iterations: Số lần lặp tối đa
+    
+    Returns:
+        tuple: (đường đi, số node đã duyệt, thời gian)
+    """
+    if goal_state is None:
+        goal_state = SOLVED_STATE_2x2
+    
+    if moves_dict is None:
+        moves_dict = MOVES_2x2
+    
+    # Lấy danh sách tên nước đi từ moves_dict
+    move_names = list(moves_dict.keys())
+    
+    # Đếm số node đã duyệt
+    nodes_visited = 0
+    
+    import random
+    
+    current_state = start_state
+    current_h = heuristic_2x2(current_state)
+    path = []
+    
+    start_time = time.time()
+    
+    # Lặp cho đến khi đạt mục tiêu hoặc không thể cải thiện thêm
+    for _ in range(max_iterations):
+        if current_state == goal_state:
+            end_time = time.time()
+            return path, nodes_visited, end_time - start_time
+        
+        # Tìm tất cả các neighbor có heuristic tốt hơn
+        better_neighbors = []
+        
+        for move in move_names:
+            nodes_visited += 1
+            neighbor = current_state.apply_move(move, moves_dict)
+            neighbor_h = heuristic_2x2(neighbor)
+            
+            # Tìm neighbor có heuristic tốt hơn
+            if neighbor_h < current_h:
+                better_neighbors.append((neighbor, move, neighbor_h))
+        
+        # Nếu không thể cải thiện, kết thúc
+        if not better_neighbors:
+            break
+        
+        # Chọn ngẫu nhiên một neighbor tốt hơn
+        chosen = random.choice(better_neighbors)
+        current_state, best_move, current_h = chosen
+        path.append(best_move)
+        
+        if time.time() - start_time > 30:  # Giới hạn thời gian 30 giây
+            return None, nodes_visited, time.time() - start_time
+    
+    # Nếu tìm thấy đường đi đến đích, trả về
+    if current_state == goal_state:
+        end_time = time.time()
+        return path, nodes_visited, end_time - start_time
+    
+    # Không tìm thấy đường đi
+    return None, nodes_visited, time.time() - start_time
+
+def greedy_best_first(start_state, goal_state=None, moves_dict=None):
+    """
+    Tự động gọi thuật toán Greedy Best-First Search phù hợp dựa vào kiểu của trạng thái đầu vào
+    """
+    if isinstance(start_state, RubikState):
+        return greedy_best_first_3x3(start_state, goal_state, moves_dict)
+    elif isinstance(start_state, Rubik2x2State):
+        return greedy_best_first_2x2(start_state, goal_state, moves_dict)
+    else:
+        raise ValueError("Trạng thái đầu vào không phải là RubikState hoặc Rubik2x2State")
+
+def ida_star(start_state, goal_state=None, moves_dict=None):
+    """
+    Tự động gọi thuật toán IDA* phù hợp dựa vào kiểu của trạng thái đầu vào
+    """
+    if isinstance(start_state, RubikState):
+        return ida_star_3x3(start_state, goal_state, moves_dict)
+    elif isinstance(start_state, Rubik2x2State):
+        return ida_star_2x2(start_state, goal_state, moves_dict)
+    else:
+        raise ValueError("Trạng thái đầu vào không phải là RubikState hoặc Rubik2x2State")
+
+def hill_climbing_max(start_state, goal_state=None, moves_dict=None):
+    """
+    Tự động gọi thuật toán Hill Climbing Max phù hợp dựa vào kiểu của trạng thái đầu vào
+    """
+    if isinstance(start_state, RubikState):
+        return hill_climbing_max_3x3(start_state, goal_state, moves_dict)
+    elif isinstance(start_state, Rubik2x2State):
+        return hill_climbing_max_2x2(start_state, goal_state, moves_dict)
+    else:
+        raise ValueError("Trạng thái đầu vào không phải là RubikState hoặc Rubik2x2State")
+
+def hill_climbing_random(start_state, goal_state=None, moves_dict=None):
+    """
+    Tự động gọi thuật toán Hill Climbing Random phù hợp dựa vào kiểu của trạng thái đầu vào
+    """
+    if isinstance(start_state, RubikState):
+        return hill_climbing_random_3x3(start_state, goal_state, moves_dict)
+    elif isinstance(start_state, Rubik2x2State):
+        return hill_climbing_random_2x2(start_state, goal_state, moves_dict)
+    else:
+        raise ValueError("Trạng thái đầu vào không phải là RubikState hoặc Rubik2x2State")
 
 def test_solver(is_2x2=False, algorithm="bfs", scramble_moves=None):
     """Test thuật toán giải Rubik
     
     Args:
         is_2x2: Nếu True, test Rubik 2x2, ngược lại test Rubik 3x3
-        algorithm: Thuật toán để test ('bfs' hoặc 'a_star')
+        algorithm: Thuật toán để test ('bfs', 'dfs', 'ucs', 'ids', 'a_star', 'ida_star', 'greedy', 'hill_climbing_max', 'hill_climbing_random')
         scramble_moves: List các nước đi để xáo trộn, nếu None sẽ dùng mặc định
     
     Returns:
@@ -302,10 +1241,28 @@ def test_solver(is_2x2=False, algorithm="bfs", scramble_moves=None):
     print(f"Đang giải bằng thuật toán {algorithm}...")
     start_time = time.time()
     
+    # Chọn thuật toán phù hợp
     if algorithm.lower() == "bfs":
         path, nodes_visited, time_taken = bfs(current_state)
-    else:  # a_star
+    elif algorithm.lower() == "dfs":
+        path, nodes_visited, time_taken = dfs(current_state)
+    elif algorithm.lower() == "ucs":
+        path, nodes_visited, time_taken = ucs(current_state)
+    elif algorithm.lower() == "ids":
+        path, nodes_visited, time_taken = ids(current_state)
+    elif algorithm.lower() == "a_star":
         path, nodes_visited, time_taken = a_star(current_state)
+    elif algorithm.lower() == "ida_star":
+        path, nodes_visited, time_taken = ida_star(current_state)
+    elif algorithm.lower() == "greedy":
+        path, nodes_visited, time_taken = greedy_best_first(current_state)
+    elif algorithm.lower() == "hill_climbing_max":
+        path, nodes_visited, time_taken = hill_climbing_max(current_state)
+    elif algorithm.lower() == "hill_climbing_random":
+        path, nodes_visited, time_taken = hill_climbing_random(current_state)
+    else:
+        print(f"Thuật toán không hợp lệ: {algorithm}")
+        return False
     
     # Kiểm tra kết quả
     if path:
@@ -350,22 +1307,22 @@ def test_solver(is_2x2=False, algorithm="bfs", scramble_moves=None):
         return False
 
 def main():
-    # Test cho Rubik 2x2 với thuật toán BFS
-    test_solver(is_2x2=True, algorithm="bfs")
+    # Test cho Rubik 2x2 với các thuật toán khác nhau
+    algorithms = [
+        "bfs", "dfs", "ucs", "ids", "a_star", "ida_star", "greedy", 
+        "hill_climbing_max", "hill_climbing_random"
+    ]
     
-    # Test cho Rubik 2x2 với thuật toán A*
+    # Test với một vài thuật toán cơ bản
+    test_solver(is_2x2=True, algorithm="bfs")
+    test_solver(is_2x2=True, algorithm="dfs")
     test_solver(is_2x2=True, algorithm="a_star")
     
-    # Test cho Rubik 3x3 với thuật toán BFS (với chuỗi nước đi đơn giản)
+    # Test với Rubik 3x3 (với chuỗi nước đi đơn giản)
     test_solver(is_2x2=False, algorithm="bfs")
     
-    # Test cho Rubik 3x3 với thuật toán A* (với chuỗi nước đi đơn giản)
-    test_solver(is_2x2=False, algorithm="a_star")
-    
-    # Test với các nước đi phức tạp hơn (tùy chỉnh)
+    # Test với các nước đi phức tạp hơn
     complex_moves = ["R", "U", "R'", "U'", "R", "U", "R'", "U'", "F'", "L'", "F", "L"]
     print("\n===== TEST VỚI CÁC NƯỚC ĐI PHỨC TẠP HƠN =====")
     test_solver(is_2x2=True, algorithm="bfs", scramble_moves=complex_moves)
 
-if __name__ == "__main__":
-    main()

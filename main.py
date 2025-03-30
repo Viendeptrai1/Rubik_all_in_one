@@ -8,8 +8,8 @@ from controls_widget import ControlsWidget
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle('Rubik Cube')
-        self.resize(1200, 800)
+        self.setWindowTitle('Rubik All-in-One')
+        self.resize(1400, 900)
 
         # Widget chính chứa layout
         central_widget = QWidget()
@@ -48,14 +48,14 @@ class MainWindow(QMainWindow):
         main_layout.addWidget(tabs)
 
         # Dock widget bên phải cho controls
-        dock = QDockWidget("Controls", self)
+        dock = QDockWidget("Điều khiển", self)
         dock.setFeatures(QDockWidget.NoDockWidgetFeatures)
         self.controls = ControlsWidget(self.current_rubik_widget)
         dock.setWidget(self.controls)
         self.addDockWidget(Qt.RightDockWidgetArea, dock)
         
         # Set kích thước cố định cho dock
-        dock.setFixedWidth(300)
+        dock.setFixedWidth(600)
     
     def on_tab_changed(self, index):
         """Xử lý khi người dùng chuyển tab"""
