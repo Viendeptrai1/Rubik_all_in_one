@@ -309,10 +309,7 @@ class ControlsWidget(QWidget):
     
     def solve_rubik(self):
         """Giải Rubik bằng thuật toán đã chọn"""
-        # Thêm code gỡ lỗi
-        print("Trạng thái ban đầu:", self.rubik_widget.rubik.state_tuple)
-        
-        # Cập nhật trạng thái giải
+        # Cập nhật UI
         self.solution_status.setText("Đang giải...")
         self.solution_time.setText("0 giây")
         self.nodes_visited.setText("0")
@@ -320,76 +317,61 @@ class ControlsWidget(QWidget):
         self.solution_moves.clear()
         self.current_solution = []
         
-        # Tránh giải khi animation đang chạy
+        # Kiểm tra điều kiện khả thi
         if self.rubik_widget.rubik.animating or self.rubik_widget.move_queue:
             self.solution_status.setText("Không thể giải khi đang thực hiện animation")
             return
         
         # Lấy trạng thái hiện tại
-        # Đảo ngược trạng thái vì thuộc tính state đã bị đảo ngược so với quy ước
-        # của thuật toán giải
         from RubikState.rubik_chen import RubikState, SOLVED_STATE_3x3, MOVES_3x3
         from RubikState.rubik_2x2 import Rubik2x2State, SOLVED_STATE_2x2, MOVES_2x2
         
-        # Lấy trạng thái current_state từ state_tuple để có trạng thái không bị đảo ngược
+        # Tạo trạng thái từ state_tuple
         if self.is_2x2:
             cp, co = self.rubik_widget.rubik.state_tuple
             current_state = Rubik2x2State(cp, co)
+            moves_dict = MOVES_2x2
+            solved_state = SOLVED_STATE_2x2
         else:
             cp, co, ep, eo = self.rubik_widget.rubik.state_tuple
             current_state = RubikState(cp, co, ep, eo)
-        
-        print("Trạng thái đã chuyển đổi (không bị đảo ngược):", current_state)
+            moves_dict = MOVES_3x3
+            solved_state = SOLVED_STATE_3x3
         
         # Lấy thuật toán đã chọn
         algorithm_index = self.algorithm_combo.currentIndex()
         time_limit = self.time_limit_spin.value()
-        
-        # Ghi đè giới hạn thời gian cho các thuật toán
-        
-        # Xác định nước đi phù hợp dựa trên loại Rubik
-        moves_dict = MOVES_2x2 if self.is_2x2 else MOVES_3x3
         
         # Hiển thị thông tin về trạng thái giải
         cube_type = "Rubik 2x2" if self.is_2x2 else "Rubik 3x3"
         algorithm_type = "BFS" if algorithm_index == 0 else "A*"
         self.solution_status.setText(f"Đang giải {cube_type} bằng {algorithm_type}...")
         
-        # Đặt thời gian giới hạn tối đa là time_limit
-        import sys
-        sys.setrecursionlimit(10000)  # Tăng giới hạn đệ quy để tránh lỗi
-        
-        # Giải dựa trên thuật toán đã chọn
+        # Chạy thuật toán giải
         try:
-            # Tạo một phiên bản mới của thuật toán solver và gọi nó
             from RubikState.rubik_solver import bfs, a_star
             
-            # Bao gói trong try-except để bắt lỗi
             start_time = time.time()
-            
-            if algorithm_index == 0:  # BFS
-                path, nodes_visited, time_taken = bfs(current_state)
-            else:  # A*
-                path, nodes_visited, time_taken = a_star(current_state)
-            
+            path, nodes_visited, time_taken = bfs(current_state) if algorithm_index == 0 else a_star(current_state)
             end_time = time.time()
             
-            # Nếu đã vượt quá giới hạn thời gian nhưng không có lỗi
+            # Xử lý timeout
             if end_time - start_time >= time_limit:
                 self.solution_status.setText(f"Đã vượt quá giới hạn thời gian {time_limit}s")
                 self.solution_time.setText(f"{end_time - start_time:.2f} giây")
                 self.nodes_visited.setText(f"{nodes_visited}")
                 return
-                
-            # Cập nhật kết quả
+            
+            # Xử lý kết quả
             if path:
+                # Đảo ngược thứ tự các nước đi để khớp với quy ước của giao diện
+                path = path[::-1]
+                
+                # Cập nhật UI
                 self.solution_status.setText("Đã tìm thấy lời giải!")
                 self.solution_time.setText(f"{time_taken:.2f} giây")
                 self.nodes_visited.setText(f"{nodes_visited}")
                 self.solution_length.setText(f"{len(path)}")
-                
-                # Đảo ngược thứ tự các nước đi
-                path = path[::-1]
                 
                 # Hiển thị lời giải
                 moves_str = " ".join([move if move.find("'") > 0 else f"{move} " for move in path])
@@ -397,36 +379,10 @@ class ControlsWidget(QWidget):
                 
                 # Lưu lời giải để áp dụng sau
                 self.current_solution = self.parse_moves(moves_str)
-                
-                # Sau khi tìm được lời giải, kiểm tra lại
-                # Tạo bản sao của trạng thái hiện tại
-                test_state = current_state.copy()
-                print("Lời giải:", path)
-                
-                # Áp dụng từng bước để kiểm tra
-                for move in path:
-                    test_state = test_state.apply_move(move, moves_dict)
-                from RubikState.rubik_chen import SOLVED_STATE_3x3
-                from RubikState.rubik_2x2 import SOLVED_STATE_2x2
-                # Kiểm tra xem trạng thái cuối có phải là đã giải
-                solved_state = SOLVED_STATE_2x2 if self.is_2x2 else SOLVED_STATE_3x3
-                print("Trạng thái sau khi áp dụng lời giải:", test_state)
-                print("Trạng thái đã giải:", solved_state)
-                print("Đã giải đúng:", test_state == solved_state)
             else:
                 self.solution_status.setText("Không tìm thấy lời giải trong giới hạn thời gian!")
                 self.solution_time.setText(f"{time_taken:.2f} giây")
                 self.nodes_visited.setText(f"{nodes_visited}")
-        except ValueError as e:
-            self.solution_status.setText(f"Lỗi giá trị: {str(e)}")
-        except TypeError as e:
-            self.solution_status.setText(f"Lỗi kiểu dữ liệu: {str(e)}")
-        except RecursionError:
-            self.solution_status.setText(f"Lỗi đệ quy quá sâu. Hãy thử với trạng thái đơn giản hơn.")
-        except MemoryError:
-            self.solution_status.setText(f"Lỗi: Hết bộ nhớ khi giải")
-        except KeyboardInterrupt:
-            self.solution_status.setText(f"Đã hủy giải")
         except Exception as e:
             self.solution_status.setText(f"Lỗi: {str(e)}")
     
