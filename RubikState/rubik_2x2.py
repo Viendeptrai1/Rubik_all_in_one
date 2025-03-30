@@ -49,7 +49,7 @@ class Rubik2x2State:
         - moves_dict: Từ điển chứa định nghĩa các nước đi, mặc định là MOVES
         """
         if moves_dict is None:
-            moves_dict = MOVES
+            moves_dict = MOVES_2x2
         move_def = moves_dict[move]
         
         # Lấy khối từ vị trí cũ đặt vào vị trí mới
@@ -63,28 +63,23 @@ class Rubik2x2State:
 # Trạng thái đã giải (solved)
 # cp: Các góc được sắp xếp đúng vị trí (0-7)
 # co: Các góc được định hướng đúng (tất cả 0)
-SOLVED_STATE = Rubik2x2State(
+SOLVED_STATE_2x2 = Rubik2x2State(
     tuple(range(8)),  # cp: Góc đúng vị trí
     tuple([0] * 8)    # co: Góc đúng hướng
 )
 
 # Định nghĩa các nước đi cho rubik 2x2
 # Trong Rubik 2x2, chỉ có các khối góc (8 góc), không có cạnh và tâm
-MOVES = {
-    # R: Xoay mặt phải theo chiều kim đồng hồ
-    # Ảnh hưởng đến các góc 0=URF, 3=URB, 4=DRF, 7=DRB
-    "R": {
-        # Vị trí 0 lấy khối từ vị trí 4, vị trí 3 lấy khối từ vị trí 0,
-        # vị trí 4 lấy khối từ vị trí 7, vị trí 7 lấy khối từ vị trí 3
+MOVES_2x2 = {
+   
+    "R'": {
         "cp": (4, 1, 2, 0, 7, 5, 6, 3),
-        # Thay đổi định hướng khi khối di chuyển
         "co": (2, 0, 0, 1, 1, 0, 0, 2)
     },
     
-    # R': Xoay mặt phải ngược chiều kim đồng hồ
-    "R'": {
-        # Vị trí 0 lấy khối từ vị trí 3, vị trí 3 lấy khối từ vị trí 7,
-        # vị trí 4 lấy khối từ vị trí 0, vị trí 7 lấy khối từ vị trí 4
+ 
+    "R": {
+
         "cp": (3, 1, 2, 7, 0, 5, 6, 4),
         "co": (1, 0, 0, 2, 2, 0, 0, 1)
     },
@@ -152,7 +147,7 @@ MOVES = {
     }
 }
 
-MOVE_NAMES = list(MOVES.keys())
+MOVE_NAMES = list(MOVES_2x2.keys())
 
 def calculate_parity(perm):
     """Tính dấu hoán vị (chẵn: 0, lẻ: 1)"""
@@ -164,7 +159,7 @@ def calculate_parity(perm):
                 inversions += 1
     return inversions % 2
 
-def heuristic(state):
+def heuristic_2x2(state):
     # Tối ưu hóa bằng cách kết hợp các vòng lặp
     corner_misplaced = corner_misoriented = 0
     for i in range(8):

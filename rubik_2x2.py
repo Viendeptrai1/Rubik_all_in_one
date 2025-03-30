@@ -1,7 +1,7 @@
 import numpy as np
 from OpenGL.GL import *
 from OpenGL.GLU import *
-from RubikState.rubik_2x2 import Rubik2x2State, SOLVED_STATE as SOLVED_STATE_2X2
+from RubikState.rubik_2x2 import Rubik2x2State, SOLVED_STATE_2x2
 
 class Piece2x2:
     """
@@ -130,7 +130,13 @@ class RubikCube2x2:
         self.rotation_y = 30
         
         # Khởi tạo trạng thái Rubik 2x2
-        self.state = SOLVED_STATE_2X2.copy()
+        self.state = SOLVED_STATE_2x2.copy()
+        
+        # Khởi tạo state_tuple trực tiếp
+        self.state_tuple = (
+            tuple(range(8)),  # cp: góc ở đúng vị trí
+            tuple([0] * 8)    # co: không có xoay góc
+        )
         
         # Thông số animation
         self.animating = False
@@ -254,11 +260,10 @@ class RubikCube2x2:
         self.animation_face = face
         
         # Đảo ngược clockwise để khớp với quy ước của RubikState
-        clockwise = not clockwise
+        self.animation_clockwise = not clockwise
         
-        self.animation_clockwise = clockwise
         self.animation_angle = 0
-        self.animation_target = 90 if clockwise else -90
+        self.animation_target = 90 if self.animation_clockwise else -90
         
     def _complete_rotation(self):
         """Hoàn thành phép xoay một mặt"""
@@ -300,9 +305,31 @@ class RubikCube2x2:
         if not clockwise:
             move = f"{face}'"
             
-        # Cập nhật trạng thái trong RubikState
-        from RubikState.rubik_2x2 import MOVES as MOVES_2X2
-        self.state = self.state.apply_move(move, MOVES_2X2)
+        # Cập nhật trạng thái trong RubikState - KHÔNG ĐẢO NGƯỢC CLOCKWISE NỮA
+        from RubikState.rubik_2x2 import MOVES_2x2
+        
+        # Lưu lại trạng thái trước khi áp dụng nước đi
+        old_state = self.state.copy()
+        
+        # Áp dụng nước đi
+        self.state = old_state.apply_move(move, MOVES_2x2)
+        
+        # Cập nhật state_tuple trực tiếp dựa trên sự thay đổi giữa trạng thái cũ và mới
+        # Hoán vị góc (cp)
+        inverse_cp = [0] * 8
+        for i, pos in enumerate(self.state.cp):
+            inverse_cp[pos] = i
+            
+        # Định hướng góc (co)
+        inverse_co = [0] * 8
+        for i, pos in enumerate(self.state.cp):
+            inverse_co[pos] = (3 - self.state.co[i]) % 3
+            
+        # Cập nhật state_tuple
+        self.state_tuple = (
+            tuple(inverse_cp),
+            tuple(inverse_co)
+        )
         
         # Reset trạng thái animation
         self.animating = False
@@ -391,6 +418,15 @@ class RubikCube2x2:
         import random
         faces = ['F', 'B', 'L', 'R', 'U', 'D']
         moves = []
+        
+        # Reset trạng thái
+        self.state = SOLVED_STATE_2x2.copy()
+        
+        # Trạng thái đã giải có state_tuple đơn giản
+        self.state_tuple = (
+            tuple(range(8)),  # cp: góc ở đúng vị trí
+            tuple([0] * 8)    # co: không có xoay góc
+        )
         
         last_face = None
         for _ in range(num_moves):
@@ -502,8 +538,14 @@ class RubikCube2x2:
                     elif current_face in ['R', 'L']:
                         co[pos_idx] = 2  # Xoay 2 lần
         
-        # Trả về đối tượng Rubik2x2State
-        return Rubik2x2State(cp, co)
+        # Tạo trạng thái từ các giá trị đã xác định
+        state = Rubik2x2State(cp, co)
+        
+        # Đảo ngược lại các phép quay để phù hợp với hướng thực tế
+        # Lưu ý: Trạng thái được tạo ở đây đã được phân tích trực tiếp từ vị trí thực tế
+        # của các khối, nên không bị ảnh hưởng bởi vấn đề đảo ngược hướng
+        
+        return state
 
     def _get_face_pieces(self, face):
         """Lấy tất cả các mảnh thuộc một mặt"""
@@ -549,36 +591,29 @@ class RubikCube2x2:
 
     def get_corner_permutation(self):
         """Trả về hoán vị góc hiện tại của khối Rubik 2x2"""
-        # Mặc định khởi tạo với trạng thái đã giải
-        cp = list(range(8))
-        # Thực tế sẽ phải phân tích trạng thái 3D để lấy hoán vị chính xác
-        # Nhưng cho mục đích hiển thị, trả về hoán vị từ RubikState
-        return cp
+        # Tạo bản sao trạng thái để tránh thay đổi trạng thái gốc
+        corrected_state = self.state.copy()
+        
+        # Trả về hoán vị góc đã hiệu chỉnh
+        return corrected_state.cp
         
     def get_corner_orientation(self):
         """Trả về định hướng góc hiện tại của khối Rubik 2x2"""
-        # Mặc định là tất cả các góc đều đúng hướng
-        co = [0] * 8
-        # Thực tế sẽ phải phân tích trạng thái 3D để lấy định hướng chính xác
-        # Nhưng cho mục đích hiển thị, trả về định hướng từ RubikState
-        return co 
+        # Tạo bản sao trạng thái để tránh thay đổi trạng thái gốc
+        corrected_state = self.state.copy()
+        
+        # Trả về định hướng góc đã hiệu chỉnh
+        return corrected_state.co
 
     def get_state_tuple(self):
         """
         Trả về biểu diễn trạng thái của Rubik 2x2 dưới dạng 2 tuple.
         
-        Trạng thái này được cập nhật tự động mỗi khi phương thức _complete_rotation()
-        được gọi sau khi hoàn thành một phép xoay mặt.
+        Phương thức này được giữ lại để tương thích ngược với mã nguồn hiện có.
+        Nó chỉ đơn giản trả về thuộc tính state_tuple.
         
         Returns:
             tuple: (cp, co) - Tuple gồm các tuple con biểu diễn
-                  hoán vị góc và định hướng góc
+                  hoán vị góc, định hướng góc
         """
-        # Lấy trạng thái hiện tại
-        state = self.state
-        
-        # Trả về các tuple biểu diễn trạng thái
-        return (
-            state.cp,  # Corner permutation (hoán vị góc)
-            state.co   # Corner orientation (định hướng góc)
-        ) 
+        return self.state_tuple 
