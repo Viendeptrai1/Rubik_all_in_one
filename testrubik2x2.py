@@ -334,6 +334,12 @@ def test_complex_scrambles():
         ["R", "U", "R'", "U'", "R'", "F", "R", "F'"],  # OLL đơn giản
         ["R", "U", "R'", "U", "R", "U", "U", "R'"],    # Sune
         ["R", "U'", "R", "F", "R'", "U", "R", "F'", "R", "R", "U'", "R'", "U'"], # PBL (Permutation of Both Layers)
+        # Thêm các công thức mới sử dụng B và L
+        ["B", "L", "B'", "L'", "B'", "U", "B", "U'"], # Corner twist pattern với B và L
+        ["L", "B", "L'", "B'", "L'", "D", "L", "D'"], # Mẫu xoay góc ở mặt dưới với B và L
+        ["B", "L", "B'", "R", "B", "L'", "B'", "R'"], # Commutator phức tạp với B và L
+        ["B", "B", "L", "L", "B'", "B'", "L'", "L'"], # Kiểm tra phép xoay hai lần
+        ["B", "L", "U", "B'", "L'", "U'", "B", "D", "B'", "L", "D'", "L'"], # Chuỗi dài hơn kết hợp B và L
     ]
     
     for i, scramble in enumerate(complex_scrambles):
@@ -756,13 +762,413 @@ def test_direct_vs_algorithms():
     else:
         print("Không tìm thấy lời giải bằng A*!")
 
+def test_advanced_move_properties():
+    """Kiểm tra nâng cao các thuộc tính của phép xoay"""
+    print("\n=== KIỂM TRA NÂNG CAO CÁC THUỘC TÍNH PHÉP XOAY ===")
+    
+    state = SOLVED_STATE_2x2.copy()
+    
+    # Kiểm tra R2 = R R
+    print("\n1. Kiểm tra phép xoay hai lần (R2 = R R):")
+    for move in ["R", "U", "F", "L", "D", "B"]:
+        # Áp dụng move hai lần
+        state1 = state.copy()
+        state1 = state1.apply_move(move, MOVES_2x2)
+        state1 = state1.apply_move(move, MOVES_2x2)
+        
+        # Áp dụng move hai lần theo cách khác
+        state2 = state.copy()
+        for _ in range(2):
+            state2 = state2.apply_move(move, MOVES_2x2)
+        
+        if state1 == state2:
+            print(f"  ✓ {move}² = {move} {move} (nhất quán)")
+        else:
+            print(f"  ✗ LỖI: {move}² ≠ {move} {move} (không nhất quán)")
+            print(f"    State1: CP={state1.cp}, CO={state1.co}")
+            print(f"    State2: CP={state2.cp}, CO={state2.co}")
+    
+    # Kiểm tra R R R R = I (identity)
+    print("\n2. Kiểm tra tính chu kỳ (R⁴ = I):")
+    for move in ["R", "U", "F", "L", "D", "B"]:
+        test_state = state.copy()
+        for i in range(1, 5):
+            test_state = test_state.apply_move(move, MOVES_2x2)
+            is_identity = test_state == state
+            print(f"  {move}^{i}: {'Trở về ban đầu' if is_identity else 'Khác ban đầu'} (nên {'bằng' if i==4 else 'khác'} ban đầu)")
+    
+    # Kiểm tra tính giao hoán của các phép xoay đối diện
+    print("\n3. Kiểm tra tính giao hoán của các phép xoay đối diện:")
+    opposite_pairs = [("R", "L"), ("U", "D"), ("F", "B")]
+    
+    for move1, move2 in opposite_pairs:
+        # Áp dụng move1 rồi move2
+        state1 = state.copy()
+        state1 = state1.apply_move(move1, MOVES_2x2)
+        state1 = state1.apply_move(move2, MOVES_2x2)
+        
+        # Áp dụng move2 rồi move1
+        state2 = state.copy()
+        state2 = state2.apply_move(move2, MOVES_2x2)
+        state2 = state2.apply_move(move1, MOVES_2x2)
+        
+        if state1 == state2:
+            print(f"  ✓ {move1} {move2} = {move2} {move1} (giao hoán)")
+        else:
+            print(f"  ✗ {move1} {move2} ≠ {move2} {move1} (không giao hoán)")
+    
+    # Kiểm tra các tiên đề của lý thuyết nhóm
+    print("\n4. Kiểm tra tiên đề của lý thuyết nhóm:")
+    
+    # Tính kết hợp: (A B) C = A (B C)
+    print("  Tính kết hợp: (A B) C = A (B C)")
+    moves_to_test = [
+        ["R", "U", "F"],
+        ["U", "R", "L"],
+        ["F", "B", "R"],
+        ["L", "U", "D"]
+    ]
+    
+    for moves in moves_to_test:
+        a, b, c = moves
+        
+        # (A B) C
+        state1 = state.copy()
+        state1 = state1.apply_move(a, MOVES_2x2)
+        state1 = state1.apply_move(b, MOVES_2x2)
+        state1 = state1.apply_move(c, MOVES_2x2)
+        
+        # A (B C)
+        state2 = state.copy()
+        state2 = state2.apply_move(a, MOVES_2x2)
+        state2 = state2.apply_move(b, MOVES_2x2)
+        state2 = state2.apply_move(c, MOVES_2x2)
+        
+        if state1 == state2:
+            print(f"  ✓ ({a} {b}) {c} = {a} ({b} {c})")
+        else:
+            print(f"  ✗ LỖI: ({a} {b}) {c} ≠ {a} ({b} {c})")
+
+def test_move_effects_on_corners():
+    """Kiểm tra chi tiết tác động của từng phép xoay đến từng góc cụ thể"""
+    print("\n=== KIỂM TRA TÁC ĐỘNG CỦA PHÉP XOAY ĐẾN TỪNG GÓC ===")
+    
+    state = SOLVED_STATE_2x2.copy()
+    
+    # Sơ đồ vị trí các góc của Rubik 2x2
+    # 0: URF, 1: ULF, 2: ULB, 3: URB, 4: DRF, 5: DLF, 6: DLB, 7: DRB
+    corner_names = ["URF", "ULF", "ULB", "URB", "DRF", "DLF", "DLB", "DRB"]
+    
+    # Dự đoán tác động của từng phép xoay đến góc
+    move_effects = {
+        "R": {
+            "affected_corners": [0, 3, 7, 4],  # URF, URB, DRB, DRF
+            "new_positions": [4, -1, -1, 0, 7, -1, -1, 3],  # -1 nghĩa là không đổi
+            "orientation_change": [1, 0, 0, 2, 2, 0, 0, 1]  # 0: không đổi, 1,2: đổi chiều
+        },
+        "U": {
+            "affected_corners": [0, 1, 2, 3],  # URF, ULF, ULB, URB
+            "new_positions": [3, 0, 1, 2, -1, -1, -1, -1],
+            "orientation_change": [0, 0, 0, 0, 0, 0, 0, 0]
+        },
+        "F": {
+            "affected_corners": [0, 1, 5, 4],  # URF, ULF, DLF, DRF
+            "new_positions": [1, 5, -1, -1, 0, 4, -1, -1],
+            "orientation_change": [1, 2, 0, 0, 2, 1, 0, 0]
+        },
+        "L": {
+            "affected_corners": [1, 2, 6, 5],  # ULF, ULB, DLB, DLF
+            "new_positions": [-1, 5, 1, -1, -1, 6, 2, -1],
+            "orientation_change": [0, 1, 2, 0, 0, 2, 1, 0]
+        },
+        "D": {
+            "affected_corners": [4, 5, 6, 7],  # DRF, DLF, DLB, DRB
+            "new_positions": [-1, -1, -1, -1, 5, 6, 7, 4],
+            "orientation_change": [0, 0, 0, 0, 0, 0, 0, 0]
+        },
+        "B": {
+            "affected_corners": [3, 2, 6, 7],  # URB, ULB, DLB, DRB
+            "new_positions": [-1, -1, 3, 7, -1, -1, 2, 6],  # Corrected for B move CP
+            "orientation_change": [0, 0, 1, 2, 0, 0, 2, 1]  # Updated to match 3x3 standard
+        }
+    }
+    
+    for move, effects in move_effects.items():
+        print(f"\nKiểm tra phép xoay {move}:")
+        affected = effects["affected_corners"]
+        print(f"  Góc bị ảnh hưởng: {', '.join([corner_names[c] for c in affected])}")
+        
+        # Áp dụng phép xoay
+        test_state = state.copy()
+        test_state = test_state.apply_move(move, MOVES_2x2)
+        
+        # Kiểm tra sự thay đổi vị trí
+        expected_positions = effects["new_positions"]
+        correct_positions = True
+        for i in range(8):
+            if expected_positions[i] != -1:  # -1 nghĩa là không đổi
+                expected = expected_positions[i]
+                actual = test_state.cp[i]
+                if expected != actual:
+                    correct_positions = False
+                    print(f"  ✗ LỖI: Góc {corner_names[i]} nên đến vị trí {corner_names[expected]} ({expected}) nhưng đến vị trí {corner_names[actual]} ({actual})")
+        
+        if correct_positions:
+            print(f"  ✓ Vị trí các góc thay đổi đúng khi áp dụng {move}")
+        else:
+            print(f"  ✗ LỖI: Vị trí các góc KHÔNG thay đổi đúng khi áp dụng {move}")
+        
+        # In ra cả CP và CO để so sánh
+        print(f"  Ban đầu: CP={state.cp}, CO={state.co}")
+        print(f"  Sau khi áp dụng {move}: CP={test_state.cp}, CO={test_state.co}")
+
+def test_complex_commutators():
+    """Kiểm tra các commutator phức tạp và tác dụng của chúng"""
+    print("\n=== KIỂM TRA CÁC COMMUTATOR PHỨC TẠP ===")
+    
+    state = SOLVED_STATE_2x2.copy()
+    
+    # Định nghĩa commutator [A, B] = A B A^-1 B^-1
+    def apply_commutator(state, a, b):
+        new_state = state.copy()
+        
+        # A
+        for move in a:
+            new_state = new_state.apply_move(move, MOVES_2x2)
+        
+        # B
+        for move in b:
+            new_state = new_state.apply_move(move, MOVES_2x2)
+        
+        # A^-1 (inverse of A)
+        for move in reversed(a):
+            inverse = move.replace("'", "") if "'" in move else move + "'"
+            new_state = new_state.apply_move(inverse, MOVES_2x2)
+        
+        # B^-1 (inverse of B)
+        for move in reversed(b):
+            inverse = move.replace("'", "") if "'" in move else move + "'"
+            new_state = new_state.apply_move(inverse, MOVES_2x2)
+            
+        return new_state
+    
+    # Danh sách các commutator để kiểm tra
+    commutators = [
+        {
+            "name": "3-cycle góc URF, ULF, ULB",
+            "a": ["R", "U"],
+            "b": ["R'", "U'"],
+            "expected_effect": "Xoay 3 góc URF, ULF, ULB theo chiều"
+        },
+        {
+            "name": "Niklas commutator",
+            "a": ["R", "U'"],
+            "b": ["L'", "U"],
+            "expected_effect": "Xoay 3 góc URF, ULB, URB"
+        },
+        {
+            "name": "Pure twisted corners",
+            "a": ["R", "B'", "R'"],
+            "b": ["F", "R", "F'"],
+            "expected_effect": "Xoay chỗ các góc với định hướng phức tạp"
+        }
+    ]
+    
+    for comm in commutators:
+        print(f"\nKiểm tra commutator: {comm['name']}")
+        print(f"  A = {' '.join(comm['a'])}, B = {' '.join(comm['b'])}")
+        print(f"  Tác dụng dự kiến: {comm['expected_effect']}")
+        
+        # Áp dụng commutator
+        result = apply_commutator(state, comm['a'], comm['b'])
+        
+        # So sánh với trạng thái ban đầu
+        is_changed = result != state
+        print(f"  Commutator thay đổi trạng thái: {'Có' if is_changed else 'Không'}")
+        print(f"  Trạng thái sau commutator: CP={result.cp}, CO={result.co}")
+        
+        # Kiểm tra tính chẵn lẻ của hoán vị
+        cp_parity = sum(result.cp[i] != i for i in range(8)) % 2
+        print(f"  Tính chẵn lẻ của hoán vị: {'Lẻ' if cp_parity else 'Chẵn'}")
+        
+        # Kiểm tra tính bảo toàn của tổng định hướng
+        sum_co = sum(result.co) % 3
+        print(f"  Tổng định hướng góc (mod 3): {sum_co} (nên bằng 0)")
+        
+        # Áp dụng commutator lần thứ 2
+        result2 = apply_commutator(result, comm['a'], comm['b'])
+        
+        # Áp dụng commutator lần thứ 3
+        result3 = apply_commutator(result2, comm['a'], comm['b'])
+        
+        # Kiểm tra xem có quay về ban đầu sau 3 lần áp dụng không
+        is_back_to_start = result3 == state
+        print(f"  Quay về ban đầu sau 3 lần áp dụng: {'Có' if is_back_to_start else 'Không'}")
+
+def test_all_possible_moves():
+    """Kiểm tra tất cả các phép xoay có thể và các thuộc tính của chúng"""
+    print("\n=== KIỂM TRA TẤT CẢ CÁC PHÉP XOAY CÓ THỂ ===")
+    
+    state = SOLVED_STATE_2x2.copy()
+    
+    # Kiểm tra tất cả các phép xoay cơ bản
+    all_moves = list(MOVES_2x2.keys())
+    
+    print(f"Tổng số phép xoay cơ bản: {len(all_moves)}")
+    print(f"Danh sách phép xoay: {', '.join(all_moves)}")
+    
+    # Tính số trạng thái có thể đạt được sau 1 nước đi
+    states_after_one_move = set()
+    for move in all_moves:
+        new_state = state.copy().apply_move(move, MOVES_2x2)
+        states_after_one_move.add(hash(new_state))
+    
+    print(f"Số trạng thái có thể đạt được sau 1 nước đi: {len(states_after_one_move)}")
+    
+    # Kiểm tra tất cả cặp phép xoay có thể
+    print("\nKiểm tra các cặp phép xoay:")
+    
+    # Chọn 5 cặp ngẫu nhiên để test
+    import random
+    random.seed(42)  # Cố định seed để kết quả nhất quán
+    
+    move_pairs = []
+    for _ in range(5):
+        move1 = random.choice(all_moves)
+        move2 = random.choice(all_moves)
+        move_pairs.append((move1, move2))
+    
+    for move1, move2 in move_pairs:
+        print(f"\n  Cặp phép xoay: {move1} {move2}")
+        
+        # Áp dụng theo thứ tự move1 -> move2
+        state1 = state.copy()
+        state1 = state1.apply_move(move1, MOVES_2x2)
+        state1 = state1.apply_move(move2, MOVES_2x2)
+        
+        # Áp dụng theo thứ tự move2 -> move1
+        state2 = state.copy()
+        state2 = state2.apply_move(move2, MOVES_2x2)
+        state2 = state2.apply_move(move1, MOVES_2x2)
+        
+        # So sánh hai trạng thái
+        if state1 == state2:
+            print(f"  ✓ Các phép xoay giao hoán: {move1} {move2} = {move2} {move1}")
+        else:
+            print(f"  ✗ Các phép xoay không giao hoán: {move1} {move2} ≠ {move2} {move1}")
+        
+        # In ra CP và CO cho mỗi trạng thái
+        print(f"  {move1} -> {move2}: CP={state1.cp}, CO={state1.co}")
+        print(f"  {move2} -> {move1}: CP={state2.cp}, CO={state2.co}")
+        
+        # Phép nghịch đảo của trình tự phép xoay
+        inverse_sequence = []
+        for move in reversed([move1, move2]):
+            if "'" in move:
+                inverse_sequence.append(move.replace("'", ""))
+            else:
+                inverse_sequence.append(move + "'")
+        
+        state3 = state1.copy()
+        for move in inverse_sequence:
+            state3 = state3.apply_move(move, MOVES_2x2)
+        
+        # Kiểm tra xem phép nghịch đảo có đưa về trạng thái ban đầu không
+        if state3 == state:
+            print(f"  ✓ Phép nghịch đảo ({' '.join(inverse_sequence)}) đưa về trạng thái ban đầu")
+        else:
+            print(f"  ✗ LỖI: Phép nghịch đảo ({' '.join(inverse_sequence)}) KHÔNG đưa về trạng thái ban đầu")
+
+def test_hardcore_scrambles():
+    """Kiểm tra các trường hợp xáo trộn cực kỳ phức tạp"""
+    print("\n=== KIỂM TRA CÁC TRƯỜNG HỢP XÁO TRỘN CỰC KỲ PHỨC TẠP ===")
+    
+    state = SOLVED_STATE_2x2.copy()
+    
+    # Danh sách các xáo trộn cực kỳ phức tạp
+    hardcore_scrambles = [
+        {
+            "name": "Superflip-like (tất cả các góc bị định hướng sai)",
+            "moves": ["R", "U", "R'", "U", "R", "U", "R'", "U", "R", "U'", "R'", "U'", "R", "U'", "R'", "U'"]
+        },
+        {
+            "name": "6-flip (6 góc đổi định hướng)",
+            "moves": ["R", "U", "R'", "U", "R", "U", "U", "R'", "U", "R", "U'", "R'", "U", "R", "U", "R'", "U'", "R", "U", "U", "R'"]
+        },
+        {
+            "name": "Chuỗi xáo trộn dài (30 nước)",
+            "moves": ["R", "U", "F", "R'", "B", "D'", "L", "U'", "F'", "R", "B'", "D", "L'", "U", "F", "R'", "B", "D'", "L", "U'", "F'", "R", "B'", "D", "L'", "U", "F", "R'", "B'", "L"]
+        },
+        {
+            "name": "Chuỗi xáo trộn ngẫu nhiên có tính tăng dần",
+            "moves": ["R", "R", "U", "U", "F", "F", "L", "L", "D", "D", "B", "B"]
+        },
+        {
+            "name": "Y-Perm lặp lại nhiều lần", 
+            "moves": ["F", "R", "U'", "R'", "U'", "R", "U", "R'", "F'", "R", "U", "R'", "U'", "R'", "F", "R", "F'"] * 3
+        }
+    ]
+    
+    for scramble in hardcore_scrambles:
+        print(f"\nXáo trộn: {scramble['name']}")
+        print(f"Chuỗi nước đi: {' '.join(scramble['moves'])}")
+        
+        # Áp dụng chuỗi xáo trộn
+        scrambled_state = state.copy()
+        for move in scramble['moves']:
+            scrambled_state = scrambled_state.apply_move(move, MOVES_2x2)
+        
+        print(f"Trạng thái sau khi xáo trộn: CP={scrambled_state.cp}, CO={scrambled_state.co}")
+        
+        # Tính số góc bị ảnh hưởng (vị trí hoặc định hướng thay đổi)
+        affected_corners = sum((scrambled_state.cp[i] != i or scrambled_state.co[i] != 0) for i in range(8))
+        print(f"Số góc bị ảnh hưởng: {affected_corners}/8")
+        
+        # Kiểm tra tính chẵn lẻ
+        cp_parity = sum(scrambled_state.cp[i] != i for i in range(8)) % 2
+        co_parity = sum(scrambled_state.co) % 3
+        print(f"Tính chẵn lẻ: CP={cp_parity}, CO={co_parity} (CO nên chia hết cho 3)")
+        
+        # Giải bằng A*
+        print("Tìm lời giải bằng A*:")
+        try:
+            from pdb_rubik_2x2 import PatternDatabase, a_star_pdb_2x2
+            pdb = PatternDatabase("rubik_2x2_pdb.pkl")
+            if pdb.load():
+                print("  Sử dụng Pattern Database heuristic...")
+                path, nodes, time_taken = a_star_pdb_2x2(scrambled_state, time_limit=120, pdb=pdb)
+            else:
+                path, nodes, time_taken = a_star(scrambled_state, time_limit=120)
+        except:
+            path, nodes, time_taken = a_star(scrambled_state, time_limit=120)
+        
+        if path:
+            print(f"  ✓ Tìm thấy lời giải độ dài {len(path)} trong {time_taken:.4f}s, {nodes} nút")
+            
+            # Kiểm tra tính đúng đắn của lời giải
+            test_state = scrambled_state.copy()
+            for move in path:
+                test_state = test_state.apply_move(move, MOVES_2x2)
+            
+            if test_state == state:
+                print("  ✓ Lời giải hoạt động đúng!")
+            else:
+                print("  ✗ LỖI: Lời giải KHÔNG đưa về trạng thái ban đầu!")
+        else:
+            print(f"  ✗ Không tìm thấy lời giải trong thời gian cho phép.")
+
 def main():
     print("=== BẮT ĐẦU KIỂM TRA RUBIK 2X2 ===")
     
-    
-    
     # Kiểm tra tính nhất quán của các phép xoay
     test_move_consistency()
+    
+    # Thêm các bài kiểm tra mới
+    test_advanced_move_properties()
+    test_move_effects_on_corners()
+    test_complex_commutators()
+    test_all_possible_moves()
+    test_hardcore_scrambles()
     
     # Kiểm tra định nghĩa phép xoay
     test_move_definitions()

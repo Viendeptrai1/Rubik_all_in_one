@@ -213,15 +213,27 @@ def bfs_2x2(start_state, goal_state=None, moves_dict=None, time_limit=30):
     return None, nodes_visited, time.time() - start_time
 
 def a_star(start_state, goal_state=None, moves_dict=None, time_limit=30):
-    """
-    Tự động gọi thuật toán A* phù hợp dựa vào kiểu của trạng thái đầu vào
-    """
-    if isinstance(start_state, RubikState):
-        return a_star_3x3(start_state, goal_state, moves_dict, time_limit)
-    elif isinstance(start_state, Rubik2x2State):
+    """Hàm thống nhất gọi thuật toán A* dựa trên loại khối Rubik"""
+    from RubikState.rubik_2x2 import Rubik2x2State
+    from RubikState.rubik_chen import RubikState
+    
+    # Kiểm tra loại trạng thái và chuyển hướng đến hàm thích hợp
+    if isinstance(start_state, Rubik2x2State):
+        # Try to use PDB version if available
+        try:
+            from pdb_rubik_2x2 import PatternDatabase, a_star_pdb_2x2
+            pdb = PatternDatabase("rubik_2x2_pdb.pkl")
+            if pdb.load():
+                print("Using Pattern Database heuristic for 2x2...")
+                return a_star_pdb_2x2(start_state, goal_state, moves_dict, time_limit, pdb)
+        except (ImportError, FileNotFoundError):
+            print("Pattern Database not available, using regular A* for 2x2...")
+        
         return a_star_2x2(start_state, goal_state, moves_dict, time_limit)
+    elif isinstance(start_state, RubikState):
+        return a_star_3x3(start_state, goal_state, moves_dict, time_limit)
     else:
-        raise ValueError("Trạng thái đầu vào không phải là RubikState hoặc Rubik2x2State")
+        raise ValueError("Unsupported Rubik state type")
 
 def bfs(start_state, goal_state=None, moves_dict=None, time_limit=30):
     """
