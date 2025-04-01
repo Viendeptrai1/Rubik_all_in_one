@@ -42,24 +42,31 @@ class Rubik2x2State:
     def copy(self):
         return Rubik2x2State(self.cp, self.co)
         
+    # def apply_move(self, move, moves_dict=None):
+    #     """
+    #     Áp dụng một nước đi và trả về trạng thái mới.
+    #     - move: Nước đi cần áp dụng (e.g. 'R', 'U', 'F', etc.)
+    #     - moves_dict: Từ điển chứa định nghĩa các nước đi, mặc định là MOVES
+    #     """
+    #     if moves_dict is None:
+    #         moves_dict = MOVES_2x2
+    #     move_def = moves_dict[move]
+        
+    #     # Lấy khối từ vị trí cũ đặt vào vị trí mới
+    #     new_cp = tuple(self.cp[move_def['cp'][i]] for i in range(8))
+        
+    #     # Kết hợp định hướng cũ với thay đổi định hướng
+    #     new_co = tuple((self.co[move_def['cp'][i]] + move_def['co'][i]) % 3 for i in range(8))
+        
+        return Rubik2x2State(new_cp, new_co)
     def apply_move(self, move, moves_dict=None):
-        """
-        Áp dụng một nước đi và trả về trạng thái mới.
-        - move: Nước đi cần áp dụng (e.g. 'R', 'U', 'F', etc.)
-        - moves_dict: Từ điển chứa định nghĩa các nước đi, mặc định là MOVES
-        """
         if moves_dict is None:
             moves_dict = MOVES_2x2
         move_def = moves_dict[move]
-        
-        # Lấy khối từ vị trí cũ đặt vào vị trí mới
-        new_cp = tuple(self.cp[move_def['cp'][i]] for i in range(8))
-        
-        # Kết hợp định hướng cũ với thay đổi định hướng
-        new_co = tuple((self.co[move_def['cp'][i]] + move_def['co'][i]) % 3 for i in range(8))
-        
+        new_cp = tuple(self.cp[p] for p in move_def['cp'])
+        new_co = tuple((self.co[p] + o) % 3 for p, o in zip(move_def['cp'], move_def['co']))
         return Rubik2x2State(new_cp, new_co)
-
+    
 # Trạng thái đã giải (solved)
 # cp: Các góc được sắp xếp đúng vị trí (0-7)
 # co: Các góc được định hướng đúng (tất cả 0)

@@ -218,7 +218,7 @@ class ControlsWidget(QWidget):
         options_layout.addWidget(QLabel("Giới hạn thời gian (giây):"))
         self.time_limit_spin = QSpinBox()
         self.time_limit_spin.setRange(1, 300)
-        self.time_limit_spin.setValue(30)
+        self.time_limit_spin.setValue(120)
         options_layout.addWidget(self.time_limit_spin)
         options_layout.addStretch()
         
@@ -488,7 +488,7 @@ class ControlsWidget(QWidget):
                 return
             
             start_time = time.time()
-            path, nodes_visited, time_taken = algorithm_func(current_state)
+            path, nodes_visited, time_taken = algorithm_func(current_state, time_limit=time_limit)
             end_time = time.time()
             
             # Xử lý timeout
