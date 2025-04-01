@@ -12,7 +12,7 @@
 # 0 = đúng hướng
 # 1 = xoay 1 lần theo chiều kim đồng hồ nhìn từ góc
 # 2 = xoay 2 lần theo chiều kim đồng hồ nhìn từ góc
-
+# U là trắng, D là vàng, F là đỏ, B là cam, L là xanh lá, R là xanh dương
 class Rubik2x2State:
     """
     Lớp quản lý trạng thái Rubik Cube 2x2.
@@ -71,79 +71,77 @@ SOLVED_STATE_2x2 = Rubik2x2State(
 # Định nghĩa các nước đi cho rubik 2x2
 # Trong Rubik 2x2, chỉ có các khối góc (8 góc), không có cạnh và tâm
 MOVES_2x2 = {
-   
-    "R'": {
-        "cp": (4, 1, 2, 0, 7, 5, 6, 3),
-        "co": (2, 0, 0, 1, 1, 0, 0, 2)
+    # === Phép xoay mặt U (Up - trên) 90 độ CW ===
+    'U': {
+        # Góc: 0=URF, 1=ULF, 2=ULB, 3=URB | Di chuyển: 0->3, 1->0, 2->1, 3->2
+        'cp': (1, 2, 3, 0, 4, 5, 6, 7), 
+        # Hướng góc không đổi khi xoay U
+        'co': (0, 0, 0, 0, 0, 0, 0, 0),
     },
-    
- 
-    "R": {
 
-        "cp": (3, 1, 2, 7, 0, 5, 6, 4),
-        "co": (1, 0, 0, 2, 2, 0, 0, 1)
+    # === Phép xoay mặt R (Right - phải) 90 độ CW ===
+    'R': {
+        # Góc: 0=URF, 3=URB, 7=DRB, 4=DRF | Di chuyển: 0->4, 3->0, 7->3, 4->7
+        'cp': (3, 1, 2, 7, 0, 5, 6, 4),
+        # URF(+1), URB(+2), DRB(+1), DRF(+2) -> Thay đổi hướng tại vị trí mới
+        'co': (1, 0, 0, 2, 2, 0, 0, 1), 
     },
-    
-    # L: Xoay mặt trái theo chiều kim đồng hồ
-    "L": {
-        # Vị trí 1 lấy khối từ vị trí 5, vị trí 2 lấy khối từ vị trí 1,
-        # vị trí 5 lấy khối từ vị trí 6, vị trí 6 lấy khối từ vị trí 2
-        "cp": (0, 5, 1, 3, 4, 6, 2, 7),
-        "co": (0, 1, 2, 0, 0, 2, 1, 0)
+
+    # === Phép xoay mặt F (Front - trước) 90 độ CW ===
+    'F': {
+        # Góc: 0=URF, 1=ULF, 5=DLF, 4=DRF | Di chuyển: 0->5, 1->0, 5->4, 4->1
+        'cp': (1, 5, 2, 3, 0, 4, 6, 7),
+        # URF(+1), ULF(+2), DLF(+1), DRF(+2) -> Thay đổi hướng tại vị trí mới
+        'co': (1, 2, 0, 0, 2, 1, 0, 0),
     },
-    
-    # L': Xoay mặt trái ngược chiều kim đồng hồ
-    "L'": {
-        "cp": (0, 2, 6, 3, 4, 1, 5, 7),
-        "co": (0, 2, 1, 0, 0, 1, 2, 0)
+
+    # === Phép xoay mặt D (Down - dưới) 90 độ CW ===
+    'D': {
+        # Góc: 4=DRF, 5=DLF, 6=DLB, 7=DRB | Di chuyển: 4->7, 5->4, 6->5, 7->6
+        'cp': (0, 1, 2, 3, 5, 6, 7, 4),
+        # Hướng góc không đổi khi xoay D
+        'co': (0, 0, 0, 0, 0, 0, 0, 0),
     },
-    
-    # F: Xoay mặt trước theo chiều kim đồng hồ
-    "F": {
-        "cp": (1, 5, 2, 3, 0, 4, 6, 7),
-        "co": (1, 2, 0, 0, 2, 1, 0, 0)
+
+    # === Phép xoay mặt L (Left - trái) 90 độ CW ===
+    'L': {
+        # Góc: 1=ULF, 2=ULB, 6=DLB, 5=DLF | Di chuyển: 1->6, 2->1, 6->5, 5->2
+        'cp': (0, 2, 6, 3, 4, 1, 5, 7),
+        # ULF(+2), ULB(+1), DLB(+2), DLF(+1) -> Thay đổi hướng tại vị trí mới
+        'co': (0, 2, 1, 0, 0, 1, 2, 0),
     },
-    
-    # F': Xoay mặt trước ngược chiều kim đồng hồ
-    "F'": {
-        "cp": (4, 0, 2, 3, 5, 1, 6, 7),
-        "co": (2, 1, 0, 0, 1, 2, 0, 0)
+
+    # === Phép xoay mặt B (Back - sau) 90 độ CW ===
+    'B': {
+        # Góc: 2=ULB, 3=URB, 7=DRB, 6=DLB | Di chuyển: 2->7, 3->2, 7->6, 6->3
+        'cp': (0, 1, 3, 6, 4, 5, 2, 7),
+         # ULB(+2), URB(+1), DRB(+2), DLB(+1) -> Thay đổi hướng tại vị trí mới
+        'co': (0, 0, 2, 1, 0, 0, 1, 2),
     },
-    
-    # B: Xoay mặt sau theo chiều kim đồng hồ
-    "B": {
-        "cp": (0, 1, 3, 7, 4, 5, 2, 6),
-        "co": (0, 0, 1, 2, 0, 0, 2, 1)
+    # === Phép xoay ngược chiều (CCW - prime) ===
+    "U'": { 
+        'cp': (3, 0, 1, 2, 4, 5, 6, 7), 
+        'co': (0, 0, 0, 0, 0, 0, 0, 0),
     },
-    
-    # B': Xoay mặt sau ngược chiều kim đồng hồ
-    "B'": {
-        "cp": (0, 1, 6, 2, 4, 5, 7, 3),
-        "co": (0, 0, 2, 1, 0, 0, 1, 2)
+    "R'": {
+        'cp': (4, 1, 2, 0, 7, 5, 6, 3),
+        'co': (1, 0, 0, 2, 2, 0, 0, 1), # (-co_R[p_inv[k]]) % 3
     },
-    
-    # U: Xoay mặt trên theo chiều kim đồng hồ
-    "U": {
-        "cp": (3, 0, 1, 2, 4, 5, 6, 7),
-        "co": (0, 0, 0, 0, 0, 0, 0, 0)
+     "F'": {
+        'cp': (4, 0, 2, 3, 5, 1, 6, 7),
+        'co': (1, 2, 0, 0, 2, 1, 0, 0), # (-co_F[p_inv[k]]) % 3
     },
-    
-    # U': Xoay mặt trên ngược chiều kim đồng hồ
-    "U'": {
-        "cp": (1, 2, 3, 0, 4, 5, 6, 7),
-        "co": (0, 0, 0, 0, 0, 0, 0, 0)
+     "D'": {
+        'cp': (0, 1, 2, 3, 7, 4, 5, 6),
+        'co': (0, 0, 0, 0, 0, 0, 0, 0),
     },
-    
-    # D: Xoay mặt dưới theo chiều kim đồng hồ
-    "D": {
-        "cp": (0, 1, 2, 3, 5, 6, 7, 4),
-        "co": (0, 0, 0, 0, 0, 0, 0, 0)
+     "L'": {
+        'cp': (0, 5, 1, 3, 4, 6, 2, 7),
+        'co': (0, 2, 1, 0, 0, 1, 2, 0), # (-co_L[p_inv[k]]) % 3
     },
-    
-    # D': Xoay mặt dưới ngược chiều kim đồng hồ
-    "D'": {
-        "cp": (0, 1, 2, 3, 7, 4, 5, 6),
-        "co": (0, 0, 0, 0, 0, 0, 0, 0)
+     "B'": {
+        'cp': (0, 1, 6, 2, 4, 5, 3, 7),
+        'co': (0, 0, 2, 1, 0, 0, 1, 2), # (-co_B[p_inv[k]]) % 3
     }
 }
 

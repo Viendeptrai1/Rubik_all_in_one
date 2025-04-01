@@ -2,7 +2,7 @@
 # Định hướng góc: 0=đúng hướng, 1=xoay 1 lần theo chiều kim đồng hồ, 2=xoay 2 lần
 # Thứ tự cạnh: 0=UR, 1=UF, 2=UL, 3=UB, 4=DR, 5=DF, 6=DL, 7=DB, 8=FR, 9=FL, 10=BL, 11=BR
 # Định hướng cạnh: 0=đúng hướng, 1=lật ngược
-
+# U là trắng, D là vàng, F là đỏ, B là cam, L là xanh lá, R là xanh dương
 class RubikState:
     """
     Lớp quản lý trạng thái Rubik Cube 3x3.
