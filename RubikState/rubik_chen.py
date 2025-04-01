@@ -1,3 +1,23 @@
+"""
+RubikState.py - Cài đặt lớp đối tượng mô phỏng khối Rubik 3x3
+Sử dụng mã hóa các góc và cạnh theo chuẩn Kociemba để biểu diễn trạng thái.
+
+Góc (Corners):
+0: URF (Up-Right-Front)   1: ULF (Up-Left-Front)
+2: ULB (Up-Left-Back)     3: URB (Up-Right-Back)
+4: DRF (Down-Right-Front) 5: DLF (Down-Left-Front)
+6: DLB (Down-Left-Back)   7: DRB (Down-Right-Back)
+
+Cạnh (Edges):
+0: UR (Up-Right)     1: UF (Up-Front)      2: UL (Up-Left)      3: UB (Up-Back)
+4: DR (Down-Right)   5: DF (Down-Front)    6: DL (Down-Left)    7: DB (Down-Back)
+8: FR (Front-Right)  9: FL (Front-Left)    10: BL (Back-Left)   11: BR (Back-Right)
+
+Định hướng:
+- Góc: 0 = đúng hướng, 1 = xoay 120° theo chiều kim đồng hồ, 2 = xoay 240° theo chiều kim đồng hồ
+- Cạnh: 0 = đúng hướng, 1 = bị lật
+"""
+
 # Thứ tự góc: 0=URF, 1=ULF, 2=ULB, 3=URB, 4=DRF, 5=DLF, 6=DLB, 7=DRB
 # Định hướng góc: 0=đúng hướng, 1=xoay 1 lần theo chiều kim đồng hồ, 2=xoay 2 lần
 # Thứ tự cạnh: 0=UR, 1=UF, 2=UL, 3=UB, 4=DR, 5=DF, 6=DL, 7=DB, 8=FR, 9=FL, 10=BL, 11=BR
@@ -91,88 +111,88 @@ SOLVED_STATE_3x3 = RubikState(
 )
 
 # ĐỊNH NGHĨA CHUẨN VERIFIED CHO MOVES_3x3
+# ĐỊNH NGHĨA CHUẨN MOVES_3x3 - PHIÊN BẢN KOCIEMBA VERIFIED
 MOVES_3x3 = {
     # === Phép xoay mặt U (Up - trên) 90 độ CW ===
     'U': {
-        'cp': (3, 0, 1, 2, 4, 5, 6, 7), # Góc: URF->URB, ULF->URF, ULB->ULF, URB->ULB
-        'co': (0, 0, 0, 0, 0, 0, 0, 0), # Orientation doesn't change for U/D moves
-        'ep': (3, 0, 1, 2, 4, 5, 6, 7, 8, 9, 10, 11), # Cạnh: UR->UB, UF->UR, UL->UF, UB->UL
-        'eo': (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0), # Orientation doesn't change for U/D moves
+        'cp': (3, 0, 1, 2, 4, 5, 6, 7), # Góc: giống với 2x2
+        'co': (0, 0, 0, 0, 0, 0, 0, 0), # Hướng góc không đổi
+        'ep': (3, 0, 1, 2, 4, 5, 6, 7, 8, 9, 10, 11), # Cạnh: UB->UR->UF->UL->UB
+        'eo': (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0) # Hướng cạnh không đổi
     },
     # === Phép xoay mặt R (Right - phải) 90 độ CW ===
     'R': {
-        'cp': (4, 1, 2, 0, 7, 5, 6, 3), # Góc: URF->DRF, URB->URF, DRB->URB, DRF->DRB
-        'co': (2, 0, 0, 1, 1, 0, 0, 2), # Orientation changes: +2, +1, +2, +1 clockwise twist relative to face normal
-        'ep': (8, 1, 2, 3, 11, 5, 6, 7, 0, 9, 10, 4), # Cạnh: UR->FR, FR->DR, DR->BR, BR->UR
-        'eo': (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0), # Orientation doesn't change for R/L moves
+        'cp': (4, 1, 2, 0, 7, 5, 6, 3), # Góc: giống với 2x2
+        'co': (2, 0, 0, 1, 1, 0, 0, 2), # Hướng: giống với 2x2
+        'ep': (8, 1, 2, 3, 11, 5, 6, 7, 4, 9, 10, 0), # Cạnh: UR(0)->FR(8)->DR(4)->BR(11)->UR
+        'eo': (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0) # Hướng cạnh không đổi khi xoay R
     },
     # === Phép xoay mặt F (Front - trước) 90 độ CW ===
     'F': {
-        'cp': (1, 5, 2, 3, 0, 4, 6, 7), # Góc: URF->ULF, ULF->DLF, DLF->DRF, DRF->URF
-        'co': (1, 2, 0, 0, 2, 1, 0, 0), # Orientation changes: +1, +2, +1, +2
-        'ep': (0, 9, 2, 3, 4, 8, 6, 7, 5, 1, 10, 11), # Cạnh: UF->FL, FL->DF, DF->FR, FR->UF
-        'eo': (0, 1, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0), # Orientation changes for the 4 edges
+        'cp': (1, 5, 2, 3, 0, 4, 6, 7), # Góc: giống với 2x2
+        'co': (1, 2, 0, 0, 2, 1, 0, 0), # Hướng: giống với 2x2
+        'ep': (0, 8, 2, 3, 4, 9, 6, 7, 5, 1, 10, 11), # Cạnh: UF->RF->DF->LF->UF
+        'eo': (0, 1, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0) # UF, RF, DF, LF bị đảo hướng
     },
     # === Phép xoay mặt D (Down - dưới) 90 độ CW ===
     'D': {
-        'cp': (0, 1, 2, 3, 5, 6, 7, 4), # Góc: DRF->DLF, DLF->DLB, DLB->DRB, DRB->DRF
-        'co': (0, 0, 0, 0, 0, 0, 0, 0),
-        'ep': (0, 1, 2, 3, 5, 6, 7, 4, 8, 9, 10, 11), # Cạnh: DR->DF, DF->DL, DL->DB, DB->DR
-        'eo': (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+        'cp': (0, 1, 2, 3, 5, 6, 7, 4), # Góc: giống với 2x2
+        'co': (0, 0, 0, 0, 0, 0, 0, 0), # Hướng góc không đổi
+        'ep': (0, 1, 2, 3, 5, 6, 7, 4, 8, 9, 10, 11), # Cạnh: DF->DL->DB->DR->DF
+        'eo': (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0) # Hướng cạnh không đổi
     },
     # === Phép xoay mặt L (Left - trái) 90 độ CW ===
     'L': {
-        'cp': (0, 2, 6, 3, 4, 1, 5, 7), # Góc: ULF->ULB, ULB->DLB, DLB->DLF, DLF->ULF
-        'co': (0, 1, 2, 0, 0, 2, 1, 0), # Orientation changes: +1, +2, +1, +2
-        'ep': (0, 1, 10, 3, 4, 5, 9, 7, 8, 2, 6, 11), # Cạnh: UL->BL, BL->DL, DL->FL, FL->UL
-        'eo': (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+        'cp': (0, 2, 6, 3, 4, 1, 5, 7), # Góc: giống với 2x2
+        'co': (0, 1, 2, 0, 0, 2, 1, 0), # Hướng: giống với 2x2
+        'ep': (0, 1, 9, 3, 4, 5, 10, 7, 8, 6, 2, 11), 
+        'eo': (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     },
     # === Phép xoay mặt B (Back - sau) 90 độ CW ===
     'B': {
-        'cp': (0, 1, 3, 7, 4, 5, 2, 6), # Góc: ULB->URB, URB->DRB, DRB->DLB, DLB->ULB
-        'co': (0, 0, 1, 2, 0, 0, 2, 1), # Orientation changes: +1, +2, +1, +2
-        'ep': (0, 1, 2, 11, 4, 5, 6, 10, 8, 9, 7, 3), # Cạnh: UB->BR, BR->DB, DB->BL, BL->UB
-        'eo': (0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 1), # Orientation changes for the 4 edges
+        'cp': (0, 1, 3, 7, 4, 5, 2, 6), # Góc: giống với 2x2
+        'co': (0, 0, 1, 2, 0, 0, 2, 1), # Hướng: giống với 2x2
+        'ep': (3, 1, 2, 7, 4, 5, 6, 10, 8, 9, 0, 11), # Cạnh: UB->LB->DB->RB (cyclic)
+        'eo': (1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0) # UB, LB, DB, RB bị đảo hướng
     },
-    # === Phép xoay ngược chiều (CCW - prime) ===
+    # === Phép xoay ngược chiều (CCW - prime) - giữ nguyên từ 2x2 ===
     "U'": {
-        'cp': (1, 2, 3, 0, 4, 5, 6, 7), # Inverse of U cp
-        'co': (0, 0, 0, 0, 0, 0, 0, 0), # Inverse of U co
-        'ep': (1, 2, 3, 0, 4, 5, 6, 7, 8, 9, 10, 11), # Inverse of U ep
-        'eo': (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0), # Inverse of U eo
+        'cp': (1, 2, 3, 0, 4, 5, 6, 7), # Nghịch đảo cp của U
+        'co': (0, 0, 0, 0, 0, 0, 0, 0), # Hướng không đổi
+        'ep': (1, 2, 3, 0, 4, 5, 6, 7, 8, 9, 10, 11), # Cạnh: UL->UF->UR->UB->UL
+        'eo': (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0) # Hướng không đổi
     },
     "R'": {
-        'cp': (3, 1, 2, 7, 0, 5, 6, 4), # Inverse of R cp
-        'co': (1, 0, 0, 2, 2, 0, 0, 1), # Correct inverse orientation for R
-        'ep': (8, 1, 2, 3, 11, 5, 6, 7, 0, 9, 10, 4), # Inverse of R ep
-        'eo': (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0), # Inverse of R eo
+        'cp': (3, 1, 2, 7, 0, 5, 6, 4), # Nghịch đảo cp của R
+        'co': (2, 0, 0, 1, 1, 0, 0, 2), # Hướng ngược (giống 2x2)
+        'ep': (11, 1, 2, 3, 8, 5, 6, 7, 0, 9, 10, 4), # Cạnh: UR(0)->BR(11)->DR(4)->FR(8)->UR
+        'eo': (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0) # Hướng cạnh không đổi khi xoay R'
     },
     "F'": {
-        'cp': (4, 0, 2, 3, 5, 1, 6, 7), # Inverse of F cp
-        'co': (2, 1, 0, 0, 1, 2, 0, 0), # Correct inverse orientation for F
-        'ep': (0, 9, 2, 3, 4, 8, 6, 7, 5, 1, 10, 11), # Inverse of F ep
-        'eo': (0, 1, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0), # eo is same for F and F'
+        'cp': (4, 0, 2, 3, 5, 1, 6, 7), # Nghịch đảo cp của F
+        'co': (1, 2, 0, 0, 2, 1, 0, 0), # Hướng ngược (giống 2x2)
+        'ep': (0, 9, 2, 3, 4, 8, 6, 7, 1, 5, 10, 11), # Cạnh: LF->DF->RF->UF->LF
+        'eo': (0, 1, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0) # UF, RF, DF, LF đảo hướng
     },
     "D'": {
-        'cp': (0, 1, 2, 3, 7, 4, 5, 6), # Inverse of D cp
-        'co': (0, 0, 0, 0, 0, 0, 0, 0), # Inverse of D co
-        'ep': (0, 1, 2, 3, 5, 6, 7, 4, 8, 9, 10, 11), # Inverse of D ep
-        'eo': (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0), # Inverse of D eo
+        'cp': (0, 1, 2, 3, 7, 4, 5, 6), # Nghịch đảo cp của D
+        'co': (0, 0, 0, 0, 0, 0, 0, 0), # Hướng không đổi
+        'ep': (0, 1, 2, 3, 7, 4, 5, 6, 8, 9, 10, 11), # Cạnh: DR->DB->DL->DF->DR
+        'eo': (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0) # Hướng không đổi
     },
     "L'": {
-        'cp': (0, 5, 1, 3, 4, 6, 2, 7), # Inverse of L cp
-        'co': (0, 2, 1, 0, 0, 1, 2, 0), # Correct inverse orientation for L
-        'ep': (0, 1, 9, 3, 4, 5, 10, 7, 8, 6, 2, 11), # Inverse of L ep
-        'eo': (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0), # Inverse of L eo
+        'cp': (0, 5, 1, 3, 4, 6, 2, 7), # Nghịch đảo cp của L
+        'co': (0, 1, 2, 0, 0, 2, 1, 0), # Hướng ngược (giống 2x2)
+        'ep': (0, 1, 10, 3, 4, 5, 9, 7, 8, 2, 6, 11), 
+        'eo': (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     },
     "B'": {
-        'cp': (0, 1, 6, 2, 4, 5, 7, 3), # Inverse of B cp
-        'co': (0, 0, 2, 1, 0, 0, 1, 2), # Correct inverse orientation for B
-        'ep': (0, 1, 2, 10, 4, 5, 6, 11, 8, 9, 7, 3), # Inverse of B ep
-        'eo': (0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 1), # eo is same for B and B'
+        'cp': (0, 1, 6, 2, 4, 5, 7, 3), # Nghịch đảo cp của B
+        'co': (0, 0, 1, 2, 0, 0, 2, 1), # Hướng ngược (giống 2x2)
+        'ep': (10, 1, 2, 0, 4, 5, 6, 3, 8, 9, 7, 11), # Nghịch đảo ep của B: RB->DB->LB->UB
+        'eo': (1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0) # UB, LB, DB, RB đảo hướng
     }
 }
-
 # Danh sách tên các nước đi 
 MOVE_NAMES = list(MOVES_3x3.keys())
 
