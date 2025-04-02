@@ -83,17 +83,15 @@ class RubikState:
         new_cp = [0] * 8
         new_co = [0] * 8
         for i in range(8):
-            source_corner_index = move_def['cp'][i]
-            new_cp[i] = self.cp[source_corner_index]
-            new_co[i] = (self.co[source_corner_index] + move_def['co'][i]) % 3
+            new_cp[move_def['cp'][i]] = self.cp[i]
+            new_co[move_def['cp'][i]] = (self.co[i] + move_def['co'][i]) % 3
         
         # === Áp dụng hoán vị và định hướng CẠNH (tương tự logic góc) ===
         new_ep = [0] * 12
         new_eo = [0] * 12
         for i in range(12):
-            source_edge_index = move_def['ep'][i]
-            new_ep[i] = self.ep[source_edge_index]
-            new_eo[i] = (self.eo[source_edge_index] + move_def['eo'][i]) % 2
+            new_ep[move_def['ep'][i]] = self.ep[i]
+            new_eo[move_def['ep'][i]] = (self.eo[i] + move_def['eo'][i]) % 2
         
         # Chuyển sang tuple để tối ưu hiệu suất
         return RubikState(tuple(new_cp), tuple(new_co), tuple(new_ep), tuple(new_eo))
@@ -113,84 +111,84 @@ SOLVED_STATE_3x3 = RubikState(
 # ĐỊNH NGHĨA CHUẨN VERIFIED CHO MOVES_3x3
 # ĐỊNH NGHĨA CHUẨN MOVES_3x3 - PHIÊN BẢN KOCIEMBA VERIFIED
 MOVES_3x3 = {
-    # === Phép xoay mặt U (Up - trên) 90 độ CW ===
-    'U': {
-        'cp': (3, 0, 1, 2, 4, 5, 6, 7), # Góc: giống với 2x2
-        'co': (0, 0, 0, 0, 0, 0, 0, 0), # Hướng góc không đổi
-        'ep': (3, 0, 1, 2, 4, 5, 6, 7, 8, 9, 10, 11), # Cạnh: UB->UR->UF->UL->UB
-        'eo': (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0) # Hướng cạnh không đổi
+    # === Phép xoay mặt L (Left - trái) 90 độ CW ===
+    'L': {
+        'cp': (0, 2, 6, 3, 4, 1, 5, 7),
+        'co': (0, 2, 1, 0, 0, 1, 2, 0),
+        'ep': (0, 1, 10, 3, 4, 5, 9, 7, 8, 2, 6, 11),
+        'eo': (0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 1, 0)
     },
     # === Phép xoay mặt R (Right - phải) 90 độ CW ===
     'R': {
-        'cp': (4, 1, 2, 0, 7, 5, 6, 3), # Góc: giống với 2x2
-        'co': (1, 0, 0, 2, 2, 0, 0, 1), # Hướng: giống với 2x2
-        'ep': (8, 1, 2, 3, 11, 5, 6, 7, 4, 9, 10, 0), # Cạnh: UR(0)->FR(8)->DR(4)->BR(11)->UR
-        'eo': (1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0) # Hướng cạnh không đổi khi xoay R
+        'cp': (4, 1, 2, 0, 7, 5, 6, 3),
+        'co': (1, 0, 0, 2, 2, 0, 0, 1),
+        'ep': (8, 1, 2, 3, 11, 5, 6, 7, 4, 9, 10, 0),
+        'eo': (1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1)
     },
     # === Phép xoay mặt F (Front - trước) 90 độ CW ===
     'F': {
-        'cp': (1, 5, 2, 3, 0, 4, 6, 7), # Góc: giống với 2x2
-        'co': (2, 1, 0, 0, 1, 2, 0, 0), # Hướng: giống với 2x2
-        'ep': (0, 9, 2, 3, 4, 8, 6, 7, 1, 5, 10, 11), # Cạnh: UF->RF->DF->LF->UF
-        'eo': (0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0) # UF, RF, DF, LF bị đảo hướng
+        'cp': (1, 5, 2, 3, 0, 4, 6, 7),
+        'co': (2, 1, 0, 0, 1, 2, 0, 0),
+        'ep': (0, 9, 2, 3, 4, 8, 6, 7, 1, 5, 10, 11),
+        'eo': (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    },
+    # === Phép xoay mặt U (Up - trên) 90 độ CW ===
+    'U': {
+        'cp': (3, 0, 1, 2, 4, 5, 6, 7),
+        'co': (0, 0, 0, 0, 0, 0, 0, 0),
+        'ep': (3, 0, 1, 2, 4, 5, 6, 7, 8, 9, 10, 11),
+        'eo': (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     },
     # === Phép xoay mặt D (Down - dưới) 90 độ CW ===
     'D': {
-        'cp': (0, 1, 2, 3, 5, 6, 7, 4), # Góc: giống với 2x2
-        'co': (0, 0, 0, 0, 0, 0, 0, 0), # Hướng góc không đổi
-        'ep': (0, 1, 2, 3, 5, 6, 7, 4, 8, 9, 10, 11), # Cạnh: DF->DL->DB->DR->DF
-        'eo': (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0) # Hướng cạnh không đổi
-    },
-    # === Phép xoay mặt L (Left - trái) 90 độ CW ===
-    'L': {
-        'cp': (0, 2, 6, 3, 4, 1, 5, 7), # Góc: giống với 2x2
-        'co': (0, 2, 1, 0, 0, 1, 2, 0), # Hướng: giống với 2x2
-        'ep': (0, 1, 2, 11, 4, 5, 6, 10, 8, 9, 3, 7), 
-        'eo': (0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1)
+        'cp': (0, 1, 2, 3, 5, 6, 7, 4),
+        'co': (0, 0, 0, 0, 0, 0, 0, 0),
+        'ep': (0, 1, 2, 3, 5, 6, 7, 4, 8, 9, 10, 11),
+        'eo': (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     },
     # === Phép xoay mặt B (Back - sau) 90 độ CW ===
     'B': {
-        'cp': (0, 1, 3, 7, 4, 5, 2, 6), # Góc: giống với 2x2
-        'co': (0, 0, 2, 1, 0, 0, 1, 2), # Hướng: giống với 2x2
-        'ep': (0, 1, 2, 11, 4, 5, 6, 10, 8, 9, 3, 7), # Cạnh: UB->LB->DB->RB (cyclic)
-        'eo': (0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1) # UB, LB, DB, RB bị đảo hướng
+        'cp': (0, 1, 3, 7, 4, 5, 2, 6),
+        'co': (0, 0, 2, 1, 0, 0, 1, 2),
+        'ep': (0, 1, 2, 11, 4, 5, 6, 10, 8, 9, 3, 7),
+        'eo': (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     },
-    # === Phép xoay ngược chiều (CCW - prime) - giữ nguyên từ 2x2 ===
-    "U'": {
-        'cp': (1, 2, 3, 0, 4, 5, 6, 7), # Nghịch đảo cp của U
-        'co': (0, 0, 0, 0, 0, 0, 0, 0), # Hướng không đổi
-        'ep': (1, 2, 3, 0, 4, 5, 6, 7, 8, 9, 10, 11), # Cạnh: UL->UF->UR->UB->UL
-        'eo': (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0) # Hướng không đổi
+    # === Phép xoay ngược chiều (CCW - prime) ===
+    "L'": {
+        'cp': (0, 5, 1, 3, 4, 6, 2, 7),
+        'co': (0, 2, 1, 0, 0, 1, 2, 0),
+        'ep': (0, 1, 9, 3, 4, 5, 10, 7, 8, 6, 2, 11),
+        'eo': (0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 1, 0)
     },
     "R'": {
-        'cp': (3, 1, 2, 7, 0, 5, 6, 4), # Nghịch đảo cp của R
-        'co': (1, 0, 0, 2, 2, 0, 0, 1), # Hướng ngược (giống 2x2)
-        'ep': (11, 1, 2, 3, 8, 5, 6, 7, 0, 9, 10, 4), # Cạnh: UR(0)->BR(11)->DR(4)->FR(8)->UR
-        'eo': (0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0) # Hướng cạnh không đổi khi xoay R'
+        'cp': (3, 1, 2, 7, 0, 5, 6, 4),
+        'co': (1, 0, 0, 2, 2, 0, 0, 1),
+        'ep': (11, 1, 2, 3, 8, 5, 6, 7, 0, 9, 10, 4),
+        'eo': (1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1)
     },
     "F'": {
-        'cp': (4, 0, 2, 3, 5, 1, 6, 7), # Nghịch đảo cp của F
-        'co': (2, 1, 0, 0, 1, 2, 0, 0), # Hướng ngược (giống 2x2)
-        'ep': (0, 8, 2, 3, 4, 9, 6, 7, 5, 1, 10, 11), # Cạnh: LF->DF->RF->UF->LF
-        'eo': (0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0) # UF, RF, DF, LF đảo hướng
-    },
-    "D'": {
-        'cp': (0, 1, 2, 3, 7, 4, 5, 6), # Nghịch đảo cp của D
-        'co': (0, 0, 0, 0, 0, 0, 0, 0), # Hướng không đổi
-        'ep': (0, 1, 2, 3, 7, 4, 5, 6, 8, 9, 10, 11), # Cạnh: DR->DB->DL->DF->DR
-        'eo': (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0) # Hướng không đổi
-    },
-    "L'": {
-        'cp': (0, 5, 1, 3, 4, 6, 2, 7), # Nghịch đảo cp của L
-        'co': (0, 2, 1, 0, 0, 1, 2, 0), # Hướng ngược (giống 2x2)
-        'ep': (0, 1, 9, 3, 4, 5, 10, 7, 8, 6, 2, 11), 
-        'eo': (0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0)
+        'cp': (4, 0, 2, 3, 5, 1, 6, 7),
+        'co': (2, 1, 0, 0, 1, 2, 0, 0),
+        'ep': (0, 8, 2, 3, 4, 9, 6, 7, 5, 1, 10, 11),
+        'eo': (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     },
     "B'": {
-        'cp': (0, 1, 6, 2, 4, 5, 7, 3), # Nghịch đảo cp của B
-        'co': (0, 0, 2, 1, 0, 0, 1, 2), # Hướng ngược (giống 2x2)
-        'ep': (0, 1, 2, 10, 4, 5, 6, 11, 8, 9, 7, 3), # Nghịch đảo ep của B: RB->DB->LB->UB
-        'eo': (0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1) # UB, LB, DB, RB đảo hướng
+        'cp': (0, 1, 6, 2, 4, 5, 7, 3),
+        'co': (0, 0, 2, 1, 0, 0, 1, 2),
+        'ep': (0, 1, 2, 10, 4, 5, 6, 11, 8, 9, 7, 3),
+        'eo': (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    },
+    "U'": {
+        'cp': (1, 2, 3, 0, 4, 5, 6, 7),
+        'co': (0, 0, 0, 0, 0, 0, 0, 0),
+        'ep': (1, 2, 3, 0, 4, 5, 6, 7, 8, 9, 10, 11),
+        'eo': (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    },
+    "D'": {
+        'cp': (0, 1, 2, 3, 7, 4, 5, 6),
+        'co': (0, 0, 0, 0, 0, 0, 0, 0),
+        'ep': (0, 1, 2, 3, 7, 4, 5, 6, 8, 9, 10, 11),
+        'eo': (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     }
 }
 # Danh sách tên các nước đi 
@@ -240,3 +238,131 @@ def heuristic_3x3(state):
     
     # Lấy giá trị lớn nhất
     return max(h_corner, h_edge, h_parity, h_orient)
+
+def calculate_prime_moves():
+    """
+    Tính toán định nghĩa cho các phép xoay ngược (prime moves) bằng cách áp dụng phép xoay thuận 3 lần.
+    """
+    base_moves = ['U', 'R', 'F', 'D', 'L', 'B']
+    prime_moves = {}
+    
+    for move in base_moves:
+        # Khởi tạo trạng thái ban đầu
+        initial_state = SOLVED_STATE_3x3
+        
+        # Áp dụng phép xoay 3 lần
+        current_state = initial_state
+        for _ in range(3):
+            current_state = current_state.apply_move(move)
+        
+        # Trích xuất định nghĩa phép xoay ngược
+        prime_move_def = {
+            'cp': current_state.cp,
+            'co': current_state.co,
+            'ep': current_state.ep,
+            'eo': current_state.eo
+        }
+        
+        # Lưu vào từ điển
+        prime_moves[f"{move}'"] = prime_move_def
+    
+    return prime_moves
+
+def test_3x3():
+    """
+    Hàm kiểm tra toàn diện các định nghĩa phép xoay của Rubik 3x3.
+    """
+    def print_test_result(test_name, passed):
+        print(f"{test_name}: {'✓ PASSED' if passed else '✗ FAILED'}")
+    
+    def states_equal(state1, state2):
+        return (state1.cp == state2.cp and state1.co == state2.co and 
+                state1.ep == state2.ep and state1.eo == state2.eo)
+    
+    def check_orientation_sum(state):
+        # Kiểm tra tổng định hướng góc (phải chia hết cho 3)
+        corner_sum = sum(state.co) % 3
+        # Kiểm tra tổng định hướng cạnh (phải chia hết cho 2)
+        edge_sum = sum(state.eo) % 2
+        return corner_sum == 0 and edge_sum == 0
+    
+    # Khởi tạo trạng thái ban đầu
+    initial_state = SOLVED_STATE_3x3
+    base_moves = ['U', 'R', 'F', 'D', 'L', 'B']
+    all_tests_passed = True
+    
+    print("\n=== KIỂM TRA ĐỊNH NGHĨA PHÉP XOAY RUBIK 3x3 ===\n")
+    
+    # Test 1: Kiểm tra X' = X³
+    print("1. Kiểm tra tính chất X' = X³:")
+    for move in base_moves:
+        # Áp dụng phép xoay 3 lần
+        state_3x = initial_state
+        for _ in range(3):
+            state_3x = state_3x.apply_move(move)
+        
+        # Áp dụng phép xoay ngược
+        state_prime = initial_state.apply_move(f"{move}'")
+        
+        # So sánh kết quả
+        test_passed = states_equal(state_3x, state_prime)
+        print_test_result(f"  {move}' = {move}³", test_passed)
+        all_tests_passed &= test_passed
+    
+    # Test 2: Kiểm tra X⁴ = I
+    print("\n2. Kiểm tra tính chất X⁴ = I:")
+    for move in base_moves:
+        state = initial_state
+        for _ in range(4):
+            state = state.apply_move(move)
+        test_passed = states_equal(state, initial_state)
+        print_test_result(f"  {move}⁴ = I", test_passed)
+        all_tests_passed &= test_passed
+    
+    # Test 3: Kiểm tra XX' = X'X = I
+    print("\n3. Kiểm tra tính chất XX' = X'X = I:")
+    for move in base_moves:
+        # Kiểm tra XX'
+        state1 = initial_state.apply_move(move)
+        state1 = state1.apply_move(f"{move}'")
+        test_passed1 = states_equal(state1, initial_state)
+        print_test_result(f"  {move}{move}' = I", test_passed1)
+        
+        # Kiểm tra X'X
+        state2 = initial_state.apply_move(f"{move}'")
+        state2 = state2.apply_move(move)
+        test_passed2 = states_equal(state2, initial_state)
+        print_test_result(f"  {move}'{move} = I", test_passed2)
+        
+        all_tests_passed &= test_passed1 and test_passed2
+    
+    # Test 4: Kiểm tra tính chất bảo toàn parity
+    print("\n4. Kiểm tra tính chất bảo toàn parity:")
+    for move in base_moves:
+        state = initial_state.apply_move(move)
+        corner_parity = calculate_parity(state.cp)
+        edge_parity = calculate_parity(state.ep)
+        test_passed = corner_parity == edge_parity
+        print_test_result(f"  Parity sau phép xoay {move}", test_passed)
+        all_tests_passed &= test_passed
+    
+    # Test 5: Kiểm tra tính chất bảo toàn định hướng tổng
+    print("\n5. Kiểm tra tính chất bảo toàn định hướng tổng:")
+    for move in base_moves:
+        state = initial_state.apply_move(move)
+        test_passed = check_orientation_sum(state)
+        print_test_result(f"  Định hướng tổng sau phép xoay {move}", test_passed)
+        all_tests_passed &= test_passed
+    
+    # Kết luận
+    print(f"\nKết luận: {'✓ Tất cả test đều PASSED' if all_tests_passed else '✗ Có test bị FAILED'}")
+    return all_tests_passed
+
+if __name__ == "__main__":
+    test_3x3()
+
+# Tính toán các phép xoay ngược dựa trên phép xoay thuận
+prime_moves = calculate_prime_moves()
+# Thêm các phép xoay ngược vào từ điển MOVES_3x3
+MOVES_3x3.update(prime_moves)
+
