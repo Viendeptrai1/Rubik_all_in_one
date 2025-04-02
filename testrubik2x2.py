@@ -866,9 +866,19 @@ def test_move_effects_on_corners():
             "new_positions": [4, -1, -1, 0, 7, -1, -1, 3],  # -1 nghĩa là không đổi
             "orientation_change": [1, 0, 0, 2, 2, 0, 0, 1]  # 0: không đổi, 1,2: đổi chiều
         },
+        "R'": {
+            "affected_corners": [0, 3, 7, 4],  # URF, URB, DRB, DRF
+            "new_positions": [3, -1, -1, 7, 0, -1, -1, 4],
+            "orientation_change": [2, 0, 0, 1, 1, 0, 0, 2]
+        },
         "U": {
             "affected_corners": [0, 1, 2, 3],  # URF, ULF, ULB, URB
             "new_positions": [3, 0, 1, 2, -1, -1, -1, -1],
+            "orientation_change": [0, 0, 0, 0, 0, 0, 0, 0]
+        },
+        "U'": {
+            "affected_corners": [0, 1, 2, 3],  # URF, ULF, ULB, URB
+            "new_positions": [1, 2, 3, 0, -1, -1, -1, -1],
             "orientation_change": [0, 0, 0, 0, 0, 0, 0, 0]
         },
         "F": {
@@ -876,51 +886,73 @@ def test_move_effects_on_corners():
             "new_positions": [1, 5, -1, -1, 0, 4, -1, -1],
             "orientation_change": [1, 2, 0, 0, 2, 1, 0, 0]
         },
+        "F'": {
+            "affected_corners": [0, 1, 5, 4],  # URF, ULF, DLF, DRF
+            "new_positions": [4, 0, -1, -1, 5, 1, -1, -1],
+            "orientation_change": [2, 1, 0, 0, 1, 2, 0, 0]
+        },
         "L": {
             "affected_corners": [1, 2, 6, 5],  # ULF, ULB, DLB, DLF
-            "new_positions": [-1, 5, 1, -1, -1, 6, 2, -1],
+            "new_positions": [-1, 2, 6, -1, -1, 1, 5, -1],  # Sửa lại chu trình: 1->2->6->5->1
             "orientation_change": [0, 1, 2, 0, 0, 2, 1, 0]
+        },
+        "L'": {
+            "affected_corners": [1, 2, 6, 5],  # ULF, ULB, DLB, DLF
+            "new_positions": [-1, 5, 1, -1, -1, 6, 2, -1],  # Ngược lại: 1->5->6->2->1
+            "orientation_change": [0, 2, 1, 0, 0, 1, 2, 0]
         },
         "D": {
             "affected_corners": [4, 5, 6, 7],  # DRF, DLF, DLB, DRB
             "new_positions": [-1, -1, -1, -1, 5, 6, 7, 4],
             "orientation_change": [0, 0, 0, 0, 0, 0, 0, 0]
         },
+        "D'": {
+            "affected_corners": [4, 5, 6, 7],  # DRF, DLF, DLB, DRB
+            "new_positions": [-1, -1, -1, -1, 7, 4, 5, 6],
+            "orientation_change": [0, 0, 0, 0, 0, 0, 0, 0]
+        },
         "B": {
             "affected_corners": [3, 2, 6, 7],  # URB, ULB, DLB, DRB
-            "new_positions": [-1, -1, 3, 7, -1, -1, 2, 6],  # Corrected for B move CP
-            "orientation_change": [0, 0, 1, 2, 0, 0, 2, 1]  # Updated to match 3x3 standard
+            "new_positions": [-1, -1, 3, 7, -1, -1, 2, 6],
+            "orientation_change": [0, 0, 1, 2, 0, 0, 2, 1]
+        },
+        "B'": {
+            "affected_corners": [3, 2, 6, 7],  # URB, ULB, DLB, DRB
+            "new_positions": [-1, -1, 6, 2, -1, -1, 7, 3],
+            "orientation_change": [0, 0, 2, 1, 0, 0, 1, 2]
         }
     }
     
-    for move, effects in move_effects.items():
-        print(f"\nKiểm tra phép xoay {move}:")
-        affected = effects["affected_corners"]
-        print(f"  Góc bị ảnh hưởng: {', '.join([corner_names[c] for c in affected])}")
-        
-        # Áp dụng phép xoay
+    def test_move(move_name):
+        print(f"\nKiểm tra phép xoay {move_name}:")
         test_state = state.copy()
-        test_state = test_state.apply_move(move, MOVES_2x2)
+        test_state.apply_move(move_name)
         
-        # Kiểm tra sự thay đổi vị trí
-        expected_positions = effects["new_positions"]
-        correct_positions = True
+        effect = move_effects[move_name]
+        affected = effect["affected_corners"]
+        expected_pos = effect["new_positions"]
+        expected_ori = effect["orientation_change"]
+        
+        # Kiểm tra hoán vị góc
         for i in range(8):
-            if expected_positions[i] != -1:  # -1 nghĩa là không đổi
-                expected = expected_positions[i]
-                actual = test_state.cp[i]
-                if expected != actual:
-                    correct_positions = False
-                    print(f"  ✗ LỖI: Góc {corner_names[i]} nên đến vị trí {corner_names[expected]} ({expected}) nhưng đến vị trí {corner_names[actual]} ({actual})")
+            if expected_pos[i] != -1:  # Nếu góc bị ảnh hưởng
+                actual_pos = test_state.cp[i]
+                if actual_pos != expected_pos[i]:
+                    print(f"Lỗi hoán vị tại góc {corner_names[i]}: "
+                          f"Kỳ vọng {corner_names[expected_pos[i]]}, "
+                          f"thực tế {corner_names[actual_pos]}")
         
-        if correct_positions:
-            print(f"  ✓ Vị trí các góc thay đổi đúng khi áp dụng {move}")
-        else:
-            print(f"  ✗ LỖI: Vị trí các góc KHÔNG thay đổi đúng khi áp dụng {move}")
-        
-        # In ra cả CP và CO để so sánh
-        print(f"  Ban đầu: CP={state.cp}, CO={state.co}")
-        print(f"  Sau khi áp dụng {move}: CP={test_state.cp}, CO={test_state.co}")
+        # Kiểm tra định hướng góc
+        for i in range(8):
+            if expected_ori[i] != 0:  # Nếu góc có thay đổi định hướng
+                actual_ori = test_state.co[i]
+                if actual_ori != expected_ori[i]:
+                    print(f"Lỗi định hướng tại góc {corner_names[i]}: "
+                          f"Kỳ vọng {expected_ori[i]}, thực tế {actual_ori}")
+    
+    # Kiểm tra tất cả các phép xoay
+    for move in move_effects.keys():
+        test_move(move)
 
 def test_complex_commutators():
     """Kiểm tra các commutator phức tạp và tác dụng của chúng"""
