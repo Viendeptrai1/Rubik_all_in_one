@@ -286,6 +286,12 @@ def test_3x3():
         edge_sum = sum(state.eo) % 2
         return corner_sum == 0 and edge_sum == 0
     
+    def count_affected_pieces(state):
+        """Đếm số lượng góc và cạnh bị ảnh hưởng so với trạng thái ban đầu"""
+        corners = sum(1 for i in range(8) if state.cp[i] != i or state.co[i] != 0)
+        edges = sum(1 for i in range(12) if state.ep[i] != i or state.eo[i] != 0)
+        return corners, edges
+    
     # Khởi tạo trạng thái ban đầu
     initial_state = SOLVED_STATE_3x3
     base_moves = ['U', 'R', 'F', 'D', 'L', 'B']
@@ -352,6 +358,71 @@ def test_3x3():
         state = initial_state.apply_move(move)
         test_passed = check_orientation_sum(state)
         print_test_result(f"  Định hướng tổng sau phép xoay {move}", test_passed)
+        all_tests_passed &= test_passed
+
+    # Test 6: Kiểm tra tính chất giao hoán của các phép xoay mặt đối diện
+    print("\n6. Kiểm tra tính chất giao hoán của các phép xoay mặt đối diện:")
+    opposite_pairs = [('U', 'D'), ('L', 'R'), ('F', 'B')]
+    for move1, move2 in opposite_pairs:
+        state1 = initial_state.apply_move(move1).apply_move(move2)
+        state2 = initial_state.apply_move(move2).apply_move(move1)
+        test_passed = states_equal(state1, state2)
+        print_test_result(f"  {move1}{move2} = {move2}{move1}", test_passed)
+        all_tests_passed &= test_passed
+
+    # Test 7: Kiểm tra tính chất KHÔNG giao hoán của các phép xoay mặt kề
+    print("\n7. Kiểm tra tính chất không giao hoán của các phép xoay mặt kề:")
+    adjacent_pairs = [('U', 'F'), ('U', 'R'), ('U', 'L'), ('U', 'B'),
+                     ('D', 'F'), ('D', 'R'), ('D', 'L'), ('D', 'B'),
+                     ('F', 'R'), ('F', 'L'), ('B', 'R'), ('B', 'L')]
+    for move1, move2 in adjacent_pairs:
+        state1 = initial_state.apply_move(move1).apply_move(move2)
+        state2 = initial_state.apply_move(move2).apply_move(move1)
+        test_passed = not states_equal(state1, state2)
+        print_test_result(f"  {move1}{move2} ≠ {move2}{move1}", test_passed)
+        all_tests_passed &= test_passed
+
+    # Test 8: Kiểm tra tính chất (X²)² = I
+    print("\n8. Kiểm tra tính chất (X²)² = I:")
+    for move in base_moves:
+        state = initial_state
+        # Áp dụng X² hai lần
+        for _ in range(2):
+            for _ in range(2):
+                state = state.apply_move(move)
+        test_passed = states_equal(state, initial_state)
+        print_test_result(f"  ({move}²)² = I", test_passed)
+        all_tests_passed &= test_passed
+
+    # Test 9: Kiểm tra số lượng góc và cạnh bị ảnh hưởng
+    print("\n9. Kiểm tra số lượng góc và cạnh bị ảnh hưởng:")
+    expected_affected = {
+        'U': (4, 4), 'D': (4, 4),  # 4 góc, 4 cạnh
+        'R': (4, 4), 'L': (4, 4),  # 4 góc, 4 cạnh
+        'F': (4, 4), 'B': (4, 4)   # 4 góc, 4 cạnh
+    }
+    for move in base_moves:
+        state = initial_state.apply_move(move)
+        corners, edges = count_affected_pieces(state)
+        exp_corners, exp_edges = expected_affected[move]
+        test_passed = corners == exp_corners and edges == exp_edges
+        print_test_result(f"  {move} ảnh hưởng {corners} góc, {edges} cạnh", test_passed)
+        all_tests_passed &= test_passed
+
+    # Test 10: Kiểm tra một số chuỗi phép xoay cơ bản
+    print("\n10. Kiểm tra một số chuỗi phép xoay cơ bản:")
+    algorithms = {
+        "Sexy move": ["R", "U", "R'", "U'"],
+        "Sune": ["R", "U", "R'", "U", "R", "U", "U", "R'"],
+        "Double Sune": ["R", "U", "R'", "U", "R", "U", "U", "R'"],
+        "Sledgehammer": ["R'", "F", "R", "F'"]
+    }
+    for name, moves in algorithms.items():
+        state = initial_state
+        for move in moves * 6:  # Lặp lại 6 lần
+            state = state.apply_move(move)
+        test_passed = states_equal(state, initial_state)
+        print_test_result(f"  {name} × 6 = I", test_passed)
         all_tests_passed &= test_passed
     
     # Kết luận
