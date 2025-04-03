@@ -150,29 +150,3 @@ def test_scramble(scramble_moves, cube_size=3, algorithm="a_star", time_limit=30
         return test_scramble_3x3(scramble_moves, algorithm, time_limit)
     else:
         raise ValueError(f"Unsupported cube size: {cube_size}")
-        
-if __name__ == "__main__":
-    # Simple test for both 2x2 and 3x3
-    from RubikState.rubik_2x2 import Rubik2x2State, SOLVED_STATE_2x2, MOVES_2x2
-    from RubikState.rubik_chen import RubikState, SOLVED_STATE_3x3, MOVES_3x3
-    
-    # Test 2x2
-    print("\n===== TESTING 2x2 CUBE =====")
-    scramble_2x2 = ["L", "U", "D'", "B'", "D'", "R'", "F", "L'", "R", "F", "L'", "B'"]
-    state_2x2 = SOLVED_STATE_2x2.copy()
-    for move in scramble_2x2:
-        state_2x2 = state_2x2.apply_move(move, MOVES_2x2)
-    
-    # First try with PDB if available
-    print("Testing with Pattern Database (PDB) algorithm:")
-    test_scramble(scramble_2x2, cube_size=2, algorithm="pdb", time_limit=60)
-    
-    # Then with normal A*
-    print("\nTesting with regular A* algorithm:")
-    test_scramble(scramble_2x2, cube_size=2, algorithm="a_star", time_limit=60)
-    
-    # Test 3x3
-    print("\n===== TESTING 3x3 CUBE =====")
-    scramble_3x3 = ["R", "U", "R'", "U'", "F'", "L", "F"]
-    test_scramble(scramble_3x3, cube_size=3, algorithm="a_star", time_limit=60)
-
