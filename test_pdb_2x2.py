@@ -1,5 +1,5 @@
 from RubikState.rubik_2x2 import Rubik2x2State, SOLVED_STATE_2x2, MOVES_2x2
-from RubikState.rubik_solver import a_star, bfs, ida_star
+from RubikState.rubik_solver import a_star, bfs, ida_star, a_star_2x2  # Import explicitly from rubik_solver
 import time
 import random
 
@@ -82,8 +82,6 @@ def test_pdb_vs_regular(num_tests=3, max_depth=10):
             
             # Now run the regular A* by importing directly from the module
             # to bypass the PDB enhancement
-            from RubikState.rubik_solver import a_star_2x2
-            
             test_state = Rubik2x2State(list(state.cp), list(state.co))
             start_time = time.time()
             path, nodes, _ = a_star_2x2(test_state, time_limit=60)

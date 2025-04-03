@@ -26,8 +26,13 @@ class Rubik2x2State:
     
     Rubik 2x2 chỉ có 8 góc (không có cạnh và tâm)
     """
-    def __init__(self, cp, co):
+    def __init__(self, cp=None, co=None):
         # Sử dụng tuple thay vì list để có hiệu suất tốt hơn
+        if cp is None:
+            cp = tuple(range(8))
+        if co is None:
+            co = tuple([0] * 8)
+        
         self.cp = tuple(cp)  # Corner permutation (hoán vị góc)
         self.co = tuple(co)  # Corner orientation (định hướng góc)
 
