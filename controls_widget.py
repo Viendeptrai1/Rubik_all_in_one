@@ -5,7 +5,7 @@ from rubik_3x3 import RubikCube
 from rubik_2x2 import RubikCube2x2
 import time
 import random
-from RubikState.rubik_solver import a_star, bfs
+from RubikState.rubik_solver import a_star, bfs, dfs, ucs, ids, ida_star, greedy_best_first, hill_climbing_max, hill_climbing_random
 
 class ControlsWidget(QWidget):
     def __init__(self, rubik_widget):
@@ -201,15 +201,26 @@ class ControlsWidget(QWidget):
         local_layout.addWidget(self.hill_climbing_random_radio)
         local_group.setLayout(local_layout)
         
-        # Thêm các nhóm vào grid layout (1 hàng, 3 cột)
+        # Nhóm 4: Thuật toán tối ưu nhất (Optimal Algorithms)
+        optimal_group = QGroupBox("Thuật toán tối ưu nhất\n(Optimal Algorithms)")
+        optimal_layout = QVBoxLayout()
+        
+        # Tạo các radio buttons cho nhóm tối ưu
+        self.pdb_astar_radio = QRadioButton("Pattern Database A* Search")
+        
+        # Thêm vào button group
+        self.algorithm_button_group.addButton(self.pdb_astar_radio, 9)
+        
+        # Thêm vào layout
+        optimal_layout.addWidget(self.pdb_astar_radio)
+        optimal_group.setLayout(optimal_layout)
+        
+        # Thêm các nhóm vào grid layout (2 hàng, 3 cột)
         algo_grid.addWidget(uninformed_group, 0, 0)
         algo_grid.addWidget(informed_group, 0, 1)
         algo_grid.addWidget(local_group, 0, 2)
-        
-        # Để tiện cho việc thêm các nhóm mới, còn để trống hàng thứ 2
-        # algo_grid.addWidget(new_group1, 1, 0)
-        # algo_grid.addWidget(new_group2, 1, 1)
-        # algo_grid.addWidget(new_group3, 1, 2)
+        algo_grid.addWidget(optimal_group, 1, 0)
+        # Còn 2 vị trí trống ở hàng 2 cho các nhóm thuật toán khác nếu cần
         
         algo_layout.addLayout(algo_grid)
         
@@ -446,7 +457,8 @@ class ControlsWidget(QWidget):
             5: ("IDA*", "ida_star"),
             6: ("Greedy Best-First", "greedy_best_first"),
             7: ("Hill Climbing Max", "hill_climbing_max"),
-            8: ("Hill Climbing Random", "hill_climbing_random")
+            8: ("Hill Climbing Random", "hill_climbing_random"),
+            9: ("Pattern Database A*", "pdb_astar")
         }
         
         if algorithm_id not in algorithm_map:
@@ -465,7 +477,8 @@ class ControlsWidget(QWidget):
             # Import các thuật toán từ module
             from RubikState.rubik_solver import (
                 bfs, dfs, ucs, ids, a_star, ida_star,
-                greedy_best_first, hill_climbing_max, hill_climbing_random
+                greedy_best_first, hill_climbing_max, hill_climbing_random,
+                pdb_astar
             )
             
             # Ánh xạ tên thuật toán với hàm tương ứng
@@ -478,7 +491,8 @@ class ControlsWidget(QWidget):
                 "ida_star": ida_star,
                 "greedy_best_first": greedy_best_first,
                 "hill_climbing_max": hill_climbing_max,
-                "hill_climbing_random": hill_climbing_random
+                "hill_climbing_random": hill_climbing_random,
+                "pdb_astar": pdb_astar
             }
             
             # Lấy hàm thuật toán dựa trên tên
@@ -500,8 +514,6 @@ class ControlsWidget(QWidget):
             
             # Xử lý kết quả
             if path:
-                # Đảo ngược thứ tự các nước đi để khớp với quy ước của giao diện
-                path = path[::-1]
                 
                 # Cập nhật UI
                 self.solution_status.setText("Đã tìm thấy lời giải!")

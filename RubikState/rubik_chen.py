@@ -40,8 +40,17 @@ class RubikState:
     Định hướng cạnh (eo - edge orientation):
     0=đúng hướng, 1=lật ngược
     """
-    def __init__(self, cp, co, ep, eo):
+    def __init__(self, cp=None, co=None, ep=None, eo=None):
         # Sử dụng tuple thay vì list để có hiệu suất tốt hơn
+        if cp is None:
+            cp = tuple(range(8))
+        if co is None:
+            co = tuple([0] * 8)
+        if ep is None:
+            ep = tuple(range(12))
+        if eo is None:
+            eo = tuple([0] * 12)
+        
         self.cp = tuple(cp)  # Corner permutation (hoán vị góc)
         self.co = tuple(co)  # Corner orientation (định hướng góc)
         self.ep = tuple(ep)  # Edge permutation (hoán vị cạnh)
@@ -62,7 +71,6 @@ class RubikState:
     def apply_move(self, move, moves_dict=None):
         """
         Áp dụng một nước đi và trả về trạng thái mới.
-        SỬA LẠI THEO LOGIC GIỐNG RUBIK 2X2 (PUSH)
         
         Args:
             move: Nước đi cần áp dụng (e.g. 'R', 'U', 'F', etc.)
@@ -79,19 +87,19 @@ class RubikState:
             raise ValueError(f"Nước đi không hợp lệ: {move}")
         move_def = moves_dict[move]
         
-        # === Áp dụng hoán vị và định hướng GÓC (giống 2x2) ===
+        # === Áp dụng hoán vị và định hướng GÓC ===
         new_cp = [0] * 8
         new_co = [0] * 8
         for i in range(8):
-            new_cp[move_def['cp'][i]] = self.cp[i]
-            new_co[move_def['cp'][i]] = (self.co[i] + move_def['co'][i]) % 3
+            new_cp[i] = self.cp[move_def['cp'][i]]
+            new_co[i] = (self.co[move_def['cp'][i]] + move_def['co'][i]) % 3
         
-        # === Áp dụng hoán vị và định hướng CẠNH (tương tự logic góc) ===
+        # === Áp dụng hoán vị và định hướng CẠNH ===
         new_ep = [0] * 12
         new_eo = [0] * 12
         for i in range(12):
-            new_ep[move_def['ep'][i]] = self.ep[i]
-            new_eo[move_def['ep'][i]] = (self.eo[i] + move_def['eo'][i]) % 2
+            new_ep[i] = self.ep[move_def['ep'][i]]
+            new_eo[i] = (self.eo[move_def['ep'][i]] + move_def['eo'][i]) % 2
         
         # Chuyển sang tuple để tối ưu hiệu suất
         return RubikState(tuple(new_cp), tuple(new_co), tuple(new_ep), tuple(new_eo))

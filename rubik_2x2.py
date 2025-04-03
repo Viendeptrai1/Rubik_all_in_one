@@ -259,7 +259,10 @@ class RubikCube2x2:
         self.animating = True
         self.animation_face = face
         
-        # Đảo ngược clockwise để khớp với quy ước của RubikState
+        # Lưu trữ giá trị clockwise gốc từ input người dùng
+        self.original_clockwise = clockwise
+        
+        # Đảo ngược clockwise chỉ dành cho hiển thị 3D
         self.animation_clockwise = not clockwise
         
         self.animation_angle = 0
@@ -272,6 +275,8 @@ class RubikCube2x2:
             
         face = self.animation_face
         rot_info = self.FACE_ROTATIONS[face]
+        
+        # Sử dụng biến animation_clockwise cho hiển thị 3D
         clockwise = self.animation_clockwise
         
         # Tính góc xoay thực sự trong logic 3D
@@ -300,12 +305,12 @@ class RubikCube2x2:
             # Cập nhật màu sắc - clockwise đã được điều chỉnh ở trên
             piece.colors = self._rotate_colors(piece, rot_info['axis'], angle)
         
-        # Cập nhật trạng thái logic
+        # Cập nhật trạng thái logic - sử dụng biến original_clockwise, không đảo ngược
         move = face
-        if not clockwise:
+        if not self.original_clockwise:  # Sử dụng giá trị gốc từ input người dùng
             move = f"{face}'"
             
-        # Cập nhật trạng thái trong RubikState - KHÔNG ĐẢO NGƯỢC CLOCKWISE NỮA
+        # Cập nhật trạng thái trong RubikState
         from RubikState.rubik_2x2 import MOVES_2x2
         
         # Lưu lại trạng thái trước khi áp dụng nước đi
@@ -314,21 +319,10 @@ class RubikCube2x2:
         # Áp dụng nước đi
         self.state = old_state.apply_move(move, MOVES_2x2)
         
-        # Cập nhật state_tuple trực tiếp dựa trên sự thay đổi giữa trạng thái cũ và mới
-        # Hoán vị góc (cp)
-        inverse_cp = [0] * 8
-        for i, pos in enumerate(self.state.cp):
-            inverse_cp[pos] = i
-            
-        # Định hướng góc (co)
-        inverse_co = [0] * 8
-        for i, pos in enumerate(self.state.cp):
-            inverse_co[pos] = (3 - self.state.co[i]) % 3
-            
-        # Cập nhật state_tuple
+        # Cập nhật state_tuple để khớp trực tiếp với state hiện tại
         self.state_tuple = (
-            tuple(inverse_cp),
-            tuple(inverse_co)
+            self.state.cp,  # Hoán vị góc
+            self.state.co   # Định hướng góc
         )
         
         # Reset trạng thái animation
