@@ -1,0 +1,10 @@
+algorithm,complexity_model,time_for_100k_samples
+bfs,O(n log n),584.8015365476839
+dfs,O(n),12756.524024227438
+greedy,O(n log n),379513.6147828238
+hill_max,O(n),29.853985400933627
+hill_random,O(n log n),55.388808819503545
+ida_star,O(n log n),181.3510938761497
+ids,O(n),42.51330308637405
+pdb,O(n),315.00781080933234
+ucs,O(n),183.4206915381392

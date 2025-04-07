@@ -1,0 +1,5 @@
+sample_size,extrapolated_time_seconds,model
+5000,4.074499298560641,O(n log n)
+10000,8.75492381785576,O(n log n)
+50000,51.18391135499869,O(n log n)
+100000,108.87025810040039,O(n log n)
