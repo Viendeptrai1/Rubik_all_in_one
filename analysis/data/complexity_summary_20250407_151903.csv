@@ -1,3 +1,0 @@
-Algorithm,Cube Type,Best Fit Model,Max Size,Extrapolated Time (s)
-BFS,2x2,O(n log n),100000,584.8015365476839
-A*,2x2,O(n log n),100000,108.8702581004004

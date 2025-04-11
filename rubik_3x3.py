@@ -379,7 +379,7 @@ class RubikCube:
         self.animation_angle = 0
         self.animation_target = 0
 
-    def scramble(self, num_moves=20):
+    def scramble(self, num_moves=10):
         """Xáo trộn Rubik ngẫu nhiên"""
         if self.animating:  # Nếu đang có animation, không thực hiện
             return None
