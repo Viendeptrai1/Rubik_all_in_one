@@ -47,67 +47,67 @@ def get_pattern_database():
     return _pattern_database
 
 # Define wrapper functions for each algorithm to automatically detect cube type
-def a_star(state, time_limit=30):
+def a_star(state, time_limit=30, return_stats=False):
     """A* algorithm for any Rubik's cube (auto detects type)"""
     if isinstance(state, Rubik2x2State):
-        return a_star_search_2x2(state, time_limit=time_limit)
-    return a_star_search_3x3(state, time_limit=time_limit)
+        return a_star_search_2x2(state, time_limit=time_limit, return_stats=return_stats)
+    return a_star_search_3x3(state, time_limit=time_limit, return_stats=return_stats)
 
-def pdb_astar(state, time_limit=30):
+def pdb_astar(state, time_limit=30, return_stats=False):
     """Pattern Database A* algorithm for 2x2 Rubik's cube"""
     if isinstance(state, Rubik2x2State):
         pdb = get_pattern_database()
-        return a_star_pdb_2x2(state, time_limit=time_limit, pdb=pdb)
+        return a_star_pdb_2x2(state, time_limit=time_limit, pdb=pdb, return_stats=return_stats)
     # For 3x3 cube, fall back to regular A*
-    return a_star_search_3x3(state, time_limit=time_limit)
+    return a_star_search_3x3(state, time_limit=time_limit, return_stats=return_stats)
 
-def bfs(state, time_limit=30):
+def bfs(state, time_limit=30, return_stats=False):
     """BFS algorithm for any Rubik's cube (auto detects type)"""
     if isinstance(state, Rubik2x2State):
-        return bfs_search_2x2(state, time_limit=time_limit)
-    return bfs_search_3x3(state, time_limit=time_limit)
+        return bfs_search_2x2(state, time_limit=time_limit, return_stats=return_stats)
+    return bfs_search_3x3(state, time_limit=time_limit, return_stats=return_stats)
 
-def dfs(state, time_limit=30):
+def dfs(state, time_limit=30, return_stats=False):
     """DFS algorithm for any Rubik's cube (auto detects type)"""
     if isinstance(state, Rubik2x2State):
-        return dfs_search_2x2(state, time_limit=time_limit)
-    return dfs_search_3x3(state, time_limit=time_limit)
+        return dfs_search_2x2(state, time_limit=time_limit, return_stats=return_stats)
+    return dfs_search_3x3(state, time_limit=time_limit, return_stats=return_stats)
 
-def ucs(state, time_limit=30):
+def ucs(state, time_limit=30, return_stats=False):
     """UCS algorithm for any Rubik's cube (auto detects type)"""
     if isinstance(state, Rubik2x2State):
-        return ucs_search_2x2(state, time_limit=time_limit)
-    return ucs_search_3x3(state, time_limit=time_limit)
+        return ucs_search_2x2(state, time_limit=time_limit, return_stats=return_stats)
+    return ucs_search_3x3(state, time_limit=time_limit, return_stats=return_stats)
 
-def ids(state, time_limit=30):
+def ids(state, time_limit=30, return_stats=False):
     """IDS algorithm for any Rubik's cube (auto detects type)"""
     if isinstance(state, Rubik2x2State):
-        return ids_search_2x2(state, time_limit=time_limit)
-    return ids_search_3x3(state, time_limit=time_limit)
+        return ids_search_2x2(state, time_limit=time_limit, return_stats=return_stats)
+    return ids_search_3x3(state, time_limit=time_limit, return_stats=return_stats)
 
-def ida_star(state, time_limit=30):
+def ida_star(state, time_limit=30, return_stats=False):
     """IDA* algorithm for any Rubik's cube (auto detects type)"""
     if isinstance(state, Rubik2x2State):
-        return ida_star_search_2x2(state, time_limit=time_limit)
-    return ida_star_search_3x3(state, time_limit=time_limit)
+        return ida_star_search_2x2(state, time_limit=time_limit, return_stats=return_stats)
+    return ida_star_search_3x3(state, time_limit=time_limit, return_stats=return_stats)
 
-def greedy_best_first(state, time_limit=30):
+def greedy_best_first(state, time_limit=30, return_stats=False):
     """Greedy Best-First algorithm for any Rubik's cube (auto detects type)"""
     if isinstance(state, Rubik2x2State):
-        return greedy_best_first_search_2x2(state, time_limit=time_limit)
-    return greedy_best_first_search_3x3(state, time_limit=time_limit)
+        return greedy_best_first_search_2x2(state, time_limit=time_limit, return_stats=return_stats)
+    return greedy_best_first_search_3x3(state, time_limit=time_limit, return_stats=return_stats)
 
-def hill_climbing_max(state, time_limit=30):
+def hill_climbing_max(state, time_limit=30, return_stats=False):
     """Hill Climbing Max algorithm for any Rubik's cube (auto detects type)"""
     if isinstance(state, Rubik2x2State):
-        return hill_climbing_max_search_2x2(state, time_limit=time_limit)
-    return hill_climbing_max_search_3x3(state, time_limit=time_limit)
+        return hill_climbing_max_search_2x2(state, time_limit=time_limit, return_stats=return_stats)
+    return hill_climbing_max_search_3x3(state, time_limit=time_limit, return_stats=return_stats)
 
-def hill_climbing_random(state, time_limit=30):
+def hill_climbing_random(state, time_limit=30, return_stats=False):
     """Hill Climbing Random algorithm for any Rubik's cube (auto detects type)"""
     if isinstance(state, Rubik2x2State):
-        return hill_climbing_random_search_2x2(state, time_limit=time_limit)
-    return hill_climbing_random_search_3x3(state, time_limit=time_limit)
+        return hill_climbing_random_search_2x2(state, time_limit=time_limit, return_stats=return_stats)
+    return hill_climbing_random_search_3x3(state, time_limit=time_limit, return_stats=return_stats)
 
 def solve_rubik(start_state, algorithm="a_star", time_limit=30):
     """
