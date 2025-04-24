@@ -1,133 +1,98 @@
-# Rubik All-in-One
+# Phân Tích Thuật Toán AI Trên Khối Rubik
 
-Ứng dụng giả lập và giải khối Rubik với nhiều thuật toán.
+Nền tảng nghiên cứu học thuật để phân tích toàn diện hiệu suất các thuật toán trí tuệ nhân tạo cho bài toán khối Rubik.
 
-## Tính năng chính
+## Mục Tiêu Nghiên Cứu
 
-- Hỗ trợ khối Rubik 3x3 và 2x2
-- Giao diện 3D tương tác sử dụng OpenGL
-- Nhiều thuật toán giải khác nhau
-- Khả năng mở rộng thuật toán dễ dàng
-- Tách luồng UI và giải thuật để giao diện không bị đóng băng
+Dự án cung cấp nền tảng để đánh giá và so sánh hiệu suất của nhiều thuật toán tìm kiếm AI khác nhau khi áp dụng vào bài toán khối Rubik. Hệ thống thu thập các chỉ số hiệu suất chi tiết cho từng thuật toán, giúp:
 
-## Cách cài đặt
+- So sánh hiệu quả và độ phức tạp của nhiều chiến lược tìm kiếm
+- Phân tích đặc tính heuristic và ảnh hưởng đến hiệu suất thuật toán
+- Đánh giá tốc độ hội tụ của các phương pháp tìm kiếm cục bộ
+- Trực quan hóa quá trình tìm kiếm và không gian trạng thái
 
-1. Cài đặt Python 3.7 trở lên
-2. Cài đặt các thư viện phụ thuộc:
-   ```
-   pip install -r requirements.txt
-   ```
-3. Chạy ứng dụng:
-   ```
-   python main.py
-   ```
+## Chỉ Số Phân Tích
 
-## Cách sử dụng
+Hệ thống theo dõi và phân tích các chỉ số hiệu suất chính:
 
-- Chọn loại Rubik 2x2 hoặc 3x3 bằng cách chuyển tab
-- Sử dụng chuột để xoay khối Rubik
-- Nhập ký hiệu nước đi (F, R, U, L, B, D) và áp dụng
-- Chọn thuật toán giải và nhấn "Giải Rubik"
-- Xem kết quả và áp dụng lời giải
+### Chỉ Số Hiệu Suất Cơ Bản
+- **Thời gian thực thi**: Thời gian tìm kiếm lời giải (giây)
+- **Số nút đã duyệt**: Số lượng trạng thái được khám phá
+- **Độ dài lời giải**: Số lượng bước tối thiểu để đạt đến trạng thái đích
 
-## Hướng dẫn thêm thuật toán mới
+### Chỉ Số Hiệu Suất Nâng Cao
+- **Bộ nhớ sử dụng**: Số lượng trạng thái được lưu trữ trong bộ nhớ cùng lúc
+- **Hệ số phân nhánh hiệu quả**: Tỷ lệ giữa số trạng thái được tạo ra và số nút đã duyệt
+- **Tỷ lệ cắt tỉa**: Phần trăm trạng thái được loại bỏ không cần xem xét thêm
 
-Ứng dụng được thiết kế để dễ dàng thêm các thuật toán mới. Dưới đây là các bước cần thực hiện:
+### Phân Tích Heuristic
+- **Độ chính xác heuristic**: Mức độ dự đoán chính xác về khoảng cách tới đích
+- **Giá trị heuristic trung bình**: Trung bình của các giá trị heuristic được tính
+- **Thống kê lời gọi heuristic**: Tần suất và hiệu quả của hàm heuristic
 
-### 1. Thêm cài đặt thuật toán
+### Chỉ Số Thuật Toán Đặc Biệt
+- **Nhiệt độ** (Simulated Annealing): Đường cong nhiệt độ theo thời gian
+- **Đa dạng quần thể** (Genetic Algorithm): Mức độ đa dạng của quần thể
+- **Các ngưỡng tìm kiếm** (IDA*): Các ngưỡng được sử dụng trong quá trình tìm kiếm
 
-Thêm triển khai thuật toán của bạn vào `RubikState/rubik_solver_2x2.py` và/hoặc `RubikState/rubik_solver_3x3.py`. Sau đó, đăng ký hàm wrapper trong `RubikState/rubik_solver.py`. Ví dụ:
+## Các Thuật Toán Đã Triển Khai
 
-```python
-# Trong rubik_solver_2x2.py
-def my_new_algorithm_2x2(state, time_limit=30):
-    # Triển khai thuật toán của bạn
-    path = []  # Đường đi tìm được
-    nodes_visited = 0  # Số nút đã duyệt
-    time_taken = 0.0  # Thời gian thực thi
-    return path, nodes_visited, time_taken
+### Thuật Toán Tìm Kiếm Không Heuristic
+- ✅ Tìm Kiếm Theo Chiều Rộng (BFS)
+- ✅ Tìm Kiếm Theo Chiều Sâu (DFS)
+- ✅ Tìm Kiếm Chi Phí Đồng Nhất (UCS)
+- ✅ Tìm Kiếm Sâu Dần (IDS)
 
-# Trong rubik_solver_3x3.py
-def my_new_algorithm_3x3(state, time_limit=30):
-    # Triển khai thuật toán của bạn
-    path = []
-    nodes_visited = 0
-    time_taken = 0.0
-    return path, nodes_visited, time_taken
+### Thuật Toán Tìm Kiếm Có Heuristic
+- ✅ Tìm Kiếm A*
+- ✅ Tìm Kiếm IDA* (A* Sâu Dần)
+- ✅ Tìm Kiếm Tham Lam (Greedy Best-First)
 
-# Trong rubik_solver.py
-def my_new_algorithm(state, time_limit=30):
-    """Mô tả thuật toán mới của bạn"""
-    if isinstance(state, Rubik2x2State):
-        return my_new_algorithm_2x2(state, time_limit=time_limit)
-    return my_new_algorithm_3x3(state, time_limit=time_limit)
-```
+### Thuật Toán Tìm Kiếm Cục Bộ
+- ✅ Leo Đồi (Steepest Ascent)
+- ✅ Leo Đồi với Khởi Động Lại Ngẫu Nhiên
+- ✅ Mô Phỏng Luyện Kim (Simulated Annealing)
+- ✅ Thuật Toán Di Truyền (Genetic Algorithm)
+- ✅ Tìm Kiếm Chùm Cục Bộ (Local Beam Search)
 
-Sau đó, xuất hàm wrapper trong `rubik_solver.py`:
+### Tìm Kiếm Trong Môi Trường Phức Tạp
+- ✅ Tìm Kiếm Đồ Thị AND-OR
+- ✅ Tìm Kiếm Trạng Thái Niềm Tin (Belief States)
 
-```python
-from RubikState.rubik_solver_2x2 import my_new_algorithm_2x2
-from RubikState.rubik_solver_3x3 import my_new_algorithm_3x3
-# ...
-__all__ = ['bfs', 'dfs', ... 'my_new_algorithm']
-```
+### Tiếp Cận Bài Toán Thỏa Mãn Ràng Buộc
+- ✅ Thuật Toán Kiểm Tra Tính Nhất Quán AC-3
+- ✅ Tìm Kiếm Quay Lui (Gán Biến)
+- ✅ Tìm Kiếm Quay Lui (Kiểm Tra Trước)
 
-### 2. Thêm thuật toán vào giao diện
+### Kỹ Thuật Nâng Cao
+- ✅ A* với Cơ Sở Dữ Liệu Mẫu (Pattern Database) cho khối 2×2
+- ⏳ Mạng Q Sâu (DQN) - Đang Phát Triển
 
-Thêm thuật toán vào `controls_widget.py` trong hai vị trí chính:
+## Thuật Toán Dự Kiến (TODO)
+- ⏳ Tìm Kiếm Cây Monte Carlo (MCTS)
+- ⏳ Phương Pháp Độ Dốc Chính Sách (Policy Gradient)
+- ⏳ Tìm Kiếm Hai Chiều (Bidirectional Search)
+- ⏳ Cơ Sở Dữ Liệu Mẫu Động (Dynamic Pattern Database)
+- ⏳ Tìm Kiếm Biên (Frontier Search - Phiên Bản Tiết Kiệm Bộ Nhớ)
 
-1. Thêm vào registry trong hàm `get_algorithm_registry()`:
+## Kiến Trúc Dự Án
 
-```python
-def get_algorithm_registry(self):
-    """Đăng ký thuật toán - dễ dàng mở rộng trong tương lai"""
-    return {
-        # ...thuật toán hiện có
-        11: ("My New Algorithm", "my_new_algorithm")  # ID tiếp theo, tên hiển thị, tên hàm
-    }
-```
+- `main.py`: Điểm khởi đầu ứng dụng và cấu trúc giao diện chính
+- `rubik_widget.py`: Các thành phần trực quan hóa 3D khối Rubik với OpenGL/PyQt5
+- `controls_widget.py`: Giao diện nghiên cứu, cấu hình thuật toán và hiển thị chỉ số phân tích
+- `RubikState/`:
+  - `rubik_chen.py`, `rubik_2x2.py`: Biểu diễn trạng thái và phép biến đổi khối Rubik
+  - `rubik_solver.py`: Giao diện thuật toán thống nhất
+  - `rubik_solver_2x2.py`, `rubik_solver_3x3.py`: Cài đặt thuật toán cho từng kích thước cụ thể
 
-2. Thêm vào ánh xạ tên thuật toán với hàm trong `solve_rubik()`:
+## Ứng Dụng Học Thuật
 
-```python
-algorithm_funcs = {
-    # ...thuật toán hiện có
-    "my_new_algorithm": my_new_algorithm,
-}
-```
+Nền tảng này phù hợp cho:
+- Nghiên cứu hiệu suất thuật toán AI trên không gian trạng thái lớn
+- Phân tích so sánh các chiến lược tìm kiếm và heuristic
+- Giảng dạy về các thuật toán tìm kiếm AI và cấu trúc dữ liệu
+- Khám phá trực quan quá trình giải quyết vấn đề của AI
 
-### 3. Thêm nút radio cho thuật toán
+## Giấy Phép
 
-Thêm radio button cho thuật toán mới trong phần `init_ui()`, vào nhóm thuật toán phù hợp:
-
-```python
-# Thêm radio button mới
-self.my_new_algorithm_radio = QRadioButton("My New Algorithm")
-self.algorithm_button_group.addButton(self.my_new_algorithm_radio, 11)  # ID phải khớp với registry
-
-# Thêm vào layout của nhóm thuật toán phù hợp
-appropriate_group_layout.addWidget(self.my_new_algorithm_radio)
-```
-
-### 4. Kiểm thử thuật toán
-
-Kiểm tra thuật toán mới với các tình huống khác nhau để đảm bảo hoạt động chính xác và hiệu quả.
-
-## Cấu trúc dự án
-
-- `main.py`: Điểm khởi đầu ứng dụng
-- `rubik_widget.py`: Widget hiển thị Rubik 3D
-- `controls_widget.py`: Widget điều khiển và giao diện người dùng
-- `rubik_3x3.py`, `rubik_2x2.py`: Mô phỏng 3D của khối Rubik
-- `RubikState/`: Thư mục chứa các thuật toán và biểu diễn trạng thái
-  - `rubik_chen.py`, `rubik_2x2.py`: Biểu diễn trạng thái cho khối Rubik
-  - `rubik_solver.py`: Giao diện thống nhất cho các thuật toán
-  - `rubik_solver_2x2.py`, `rubik_solver_3x3.py`: Triển khai cụ thể cho từng loại Rubik
-
-## Đóng góp
-
-Đóng góp và cải tiến cho dự án luôn được chào đón. Vui lòng tạo issue hoặc pull request để thêm cải tiến mới.
-
-## Giấy phép
-
-[MIT License](LICENSE)
+[Giấy Phép MIT](LICENSE)
