@@ -5,7 +5,14 @@ from rubik_3x3 import RubikCube
 from rubik_2x2 import RubikCube2x2
 import time
 import random
-from RubikState.rubik_solver import a_star, bfs, dfs, ucs, ids, ida_star, greedy_best_first, hill_climbing_max, hill_climbing_random
+from RubikState.rubik_solver import (
+    a_star, bfs, dfs, ucs, ids, ida_star, greedy_best_first, 
+    hill_climbing_max, hill_climbing_random, pdb_astar,
+    # Thêm các thuật toán mới
+    simulated_annealing, genetic_algorithm, local_beam_search,
+    and_or_graph_search, belief_states_search, ac3_search,
+    backtracking_search_strategy1, backtracking_search_strategy2
+)
 
 # Tạo Worker Thread để chạy thuật toán giải trong luồng riêng biệt
 class SolverThread(QThread):
@@ -214,7 +221,7 @@ class ControlsWidget(QWidget):
         
         # Thêm hai phần vào top_layout
         top_layout.addWidget(basic_controls, 1)  # Tỷ lệ 1
-        top_layout.addWidget(info_panel, 1)      # Tỷ lệ 1
+        top_layout.addWidget(info_panel, 3)      # Tỷ lệ 3 - làm cho phần bên phải rộng hơn, chiếm 3/4
         
         # ===== PHẦN DƯỚI: CÁC NHÓM THUẬT TOÁN (chiếm 1/2 diện tích) =====
         algo_widget = QWidget()
@@ -327,6 +334,65 @@ class ControlsWidget(QWidget):
         algo_grid.addWidget(local_group, 0, 2)
         algo_grid.addWidget(pattern_db_group, 1, 0)
         algo_grid.addWidget(rl_group, 1, 1)
+        
+        # Thêm các thuật toán mới theo yêu cầu
+        
+        # Cập nhật nhóm Tìm kiếm cục bộ (Local Search) với 3 thuật toán mới
+        # Thêm các thuật toán mới vào nhóm Local Search
+        self.simulated_annealing_radio = QRadioButton("Simulated Annealing")
+        self.genetic_algorithm_radio = QRadioButton("Genetic Algorithm")
+        self.local_beam_search_radio = QRadioButton("Local Beam Search")
+        
+        # Thêm vào button group
+        self.algorithm_button_group.addButton(self.simulated_annealing_radio, 11)
+        self.algorithm_button_group.addButton(self.genetic_algorithm_radio, 12)
+        self.algorithm_button_group.addButton(self.local_beam_search_radio, 13)
+        
+        # Thêm vào layout
+        local_layout.addWidget(self.simulated_annealing_radio)
+        local_layout.addWidget(self.genetic_algorithm_radio)
+        local_layout.addWidget(self.local_beam_search_radio)
+        
+        # Thêm nhóm Tìm kiếm trong môi trường phức tạp
+        complex_env_group = QGroupBox("Tìm kiếm trong môi trường phức tạp")
+        complex_env_layout = QVBoxLayout()
+        
+        # Tạo các radio buttons cho nhóm tìm kiếm môi trường phức tạp
+        self.and_or_search_radio = QRadioButton("AND-OR Graph Search")
+        self.belief_states_radio = QRadioButton("Belief States")
+        
+        # Thêm vào button group
+        self.algorithm_button_group.addButton(self.and_or_search_radio, 14)
+        self.algorithm_button_group.addButton(self.belief_states_radio, 15)
+        
+        # Thêm vào layout
+        complex_env_layout.addWidget(self.and_or_search_radio)
+        complex_env_layout.addWidget(self.belief_states_radio)
+        complex_env_group.setLayout(complex_env_layout)
+        
+        # Thêm nhóm CSP (Constraint Satisfaction Problem)
+        csp_group = QGroupBox("Bài toán thoả mãn ràng buộc (CSP)")
+        csp_layout = QVBoxLayout()
+        
+        # Tạo các radio buttons cho nhóm CSP
+        self.ac3_radio = QRadioButton("AC-3 (Arc Consistency Algorithm 3)")
+        self.backtracking_1_radio = QRadioButton("Backtracking Search (Gán giá trị từng biến)")
+        self.backtracking_2_radio = QRadioButton("Backtracking Search (Kiểm tra ràng buộc sớm)")
+        
+        # Thêm vào button group
+        self.algorithm_button_group.addButton(self.ac3_radio, 16)
+        self.algorithm_button_group.addButton(self.backtracking_1_radio, 17)
+        self.algorithm_button_group.addButton(self.backtracking_2_radio, 18)
+        
+        # Thêm vào layout
+        csp_layout.addWidget(self.ac3_radio)
+        csp_layout.addWidget(self.backtracking_1_radio)
+        csp_layout.addWidget(self.backtracking_2_radio)
+        csp_group.setLayout(csp_layout)
+        
+        # Thêm các nhóm mới vào grid layout
+        algo_grid.addWidget(complex_env_group, 1, 2)
+        algo_grid.addWidget(csp_group, 2, 0, 1, 2)  # Span 2 cột
         
         algo_layout.addLayout(algo_grid)
         
@@ -495,115 +561,83 @@ class ControlsWidget(QWidget):
         self.update_state_display()
     
     def shuffle_cube(self):
-        """Xáo trộn khối Rubik ngẫu nhiên"""
-        # Tạo danh sách các nước đi ngẫu nhiên
-        faces = ['F', 'B', 'L', 'R', 'U', 'D']
-        random_moves = []
-        
-        last_face = None
-        for _ in range(20):
-            # Tránh lặp lại mặt vừa xoay
-            available_faces = [f for f in faces if f != last_face]
-            face = random.choice(available_faces)
-            last_face = face
-            
-            clockwise = random.choice([True, False])
-            random_moves.append((face, clockwise))
-        
-        # Reset khối Rubik
-        self.reset_cube()
-        
-        # Xáo trộn biểu diễn dạng hình (Rubik 3D)
-        self.apply_moves_to_3d_cube(random_moves)
-        
-        # Sau khi xáo trộn, hiển thị trạng thái mới
-        # Do animation, việc cập nhật hiển thị sẽ được thực hiện trong hàm update_animation
-    
-    def solve_rubik(self):
-        """Giải Rubik bằng thuật toán đã chọn trong luồng riêng biệt"""
-        # Cập nhật UI
-        self.solution_status.setText("Đang giải...")
-        self.solution_time.setText("0 giây")
-        self.nodes_visited.setText("0")
-        self.solution_length.setText("0")
-        self.solution_moves.clear()
-        self.current_solution = []
-        
-        # Tạo và hiển thị thanh tiến trình
-        if not hasattr(self, 'progress_bar'):
-            self.progress_bar = QProgressBar()
-            # Thêm vào layout phù hợp - phía trên nút "Áp dụng lời giải"
-            # Tìm nút áp dụng lời giải bằng cách duyệt qua tất cả các nút
-            apply_solution_btn = None
-            for btn in self.findChildren(QPushButton):
-                if btn.text() == "Áp dụng lời giải":
-                    apply_solution_btn = btn
-                    break
-            
-            if apply_solution_btn:
-                basic_layout = apply_solution_btn.parent().layout()
-                idx = basic_layout.indexOf(apply_solution_btn)
-                basic_layout.insertWidget(idx, self.progress_bar)
-            else:
-                # Nếu không tìm thấy nút, thêm vào layout chính
-                self.layout().addWidget(self.progress_bar)
-        
-        # Cập nhật trạng thái ban đầu của thanh tiến trình
-        self.progress_bar.setRange(0, 0)  # Chế độ không xác định
-        self.progress_bar.setValue(0)
-        self.progress_bar.setVisible(True)
-        
-        # Kiểm tra điều kiện khả thi
+        """Xáo trộn Rubik"""
+        # Tránh xáo trộn khi đang animation
         if self.rubik_widget.rubik.animating or self.rubik_widget.move_queue:
-            self.solution_status.setText("Không thể giải khi đang thực hiện animation")
-            self.progress_bar.setVisible(False)
+            self.solution_status.setText("Không thể xáo trộn khi đang thực hiện animation")
             return
-        
-        # Lấy trạng thái hiện tại
-        from RubikState.rubik_chen import RubikState, SOLVED_STATE_3x3, MOVES_3x3
-        from RubikState.rubik_2x2 import Rubik2x2State, SOLVED_STATE_2x2, MOVES_2x2
-        
-        # Tạo trạng thái từ state_tuple
-        if self.is_2x2:
-            cp, co = self.rubik_widget.rubik.state_tuple
-            current_state = Rubik2x2State(cp, co)
-            moves_dict = MOVES_2x2
-            solved_state = SOLVED_STATE_2x2
-        else:
-            cp, co, ep, eo = self.rubik_widget.rubik.state_tuple
-            current_state = RubikState(cp, co, ep, eo)
-            moves_dict = MOVES_3x3
-            solved_state = SOLVED_STATE_3x3
-        
-        # Xác định thuật toán đã chọn
-        algorithm_id = self.algorithm_button_group.checkedId()
-        
-        # Lấy thông tin thuật toán từ registry
-        algorithm_registry = self.get_algorithm_registry()
-        
-        if algorithm_id not in algorithm_registry:
-            self.solution_status.setText("Lỗi: Không tìm thấy thuật toán đã chọn!")
-            self.progress_bar.setVisible(False)
-            return
-        
-        algorithm_name, algorithm_func_name = algorithm_registry[algorithm_id]
-        
-        # Hiển thị thông tin về trạng thái giải
-        cube_type = "Rubik 2x2" if self.is_2x2 else "Rubik 3x3"
-        self.solution_status.setText(f"Đang giải {cube_type} bằng {algorithm_name}...")
-        
-        # Lấy thời gian giới hạn
-        time_limit = self.time_limit_spin.value()
-        
-        try:
-            # Import các thuật toán từ module
-            from RubikState.rubik_solver import (
-                bfs, dfs, ucs, ids, a_star, ida_star,
-                greedy_best_first, hill_climbing_max, hill_climbing_random,
-                pdb_astar
-            )
             
-            # Ánh xạ tên thuật toán với hàm tương ứng
+        # Sinh ngẫu nhiên 20 nước đi
+        moves = []
+        num_moves = 20
+        available_moves = ["U", "D", "F", "B", "L", "R"]
+        variants = ["", "'", "2"]
+        
+        for _ in range(num_moves):
+            move = random.choice(available_moves)
+            variant = random.choice(variants)
+            moves.append(move + variant)
+            
+        # Áp dụng các nước đi
+        self.apply_moves_to_3d_cube(moves)
+        
+        # Cập nhật hiển thị trạng thái
+        self.update_state_display()
+        
+        # Thông báo
+        moves_str = " ".join(moves)
+        self.solution_status.setText(f"Đã xáo trộn: {moves_str}")
+    
+    def get_current_state(self):
+        """Lấy trạng thái hiện tại của Rubik để sử dụng cho thuật toán giải"""
+        try:
+            # Tránh lấy trạng thái khi đang animation
+            if self.rubik_widget.rubik.animating or self.rubik_widget.move_queue:
+                self.solution_status.setText("Không thể giải khi đang thực hiện animation")
+                return None
+                
+            # Lấy trạng thái từ đối tượng Rubik 3D
+            from RubikState.rubik_chen import RubikState
+            from RubikState.rubik_2x2 import Rubik2x2State
+            
+            # Tạo trạng thái từ state_tuple
+            if self.is_2x2:
+                cp, co = self.rubik_widget.rubik.state_tuple
+                current_state = Rubik2x2State(cp, co)
+            else:
+                cp, co, ep, eo = self.rubik_widget.rubik.state_tuple
+                current_state = RubikState(cp, co, ep, eo)
+                
+            return current_state
+        except Exception as e:
+            self.solution_status.setText(f"Lỗi khi lấy trạng thái: {str(e)}")
+            print(f"Lỗi khi lấy trạng thái: {e}")
+            return None
+            
+    def solve_rubik(self):
+        """
+        Giải Rubik dựa trên thuật toán đã chọn
+        """
+        try:
+            # Lấy trạng thái Rubik hiện tại
+            current_state = self.get_current_state()
+            
+            if current_state is None:
+                self.solution_status.setText("Không thể lấy trạng thái Rubik hiện tại!")
+                return
+            
+            # Lấy thuật toán đã chọn từ radio buttons
+            selected_id = self.algorithm_button_group.checkedId()
+            algorithm_registry = self.get_algorithm_registry()
+            
+            if selected_id not in algorithm_registry:
+                self.solution_status.setText("Thuật toán không hợp lệ!")
+                return
+                
+            # Lấy tên hiển thị và tên thuật toán từ registry
+            algorithm_display_name, algorithm_name = algorithm_registry[selected_id]
+            
+            # Ánh xạ tên thuật toán với hàm
             algorithm_funcs = {
                 "bfs": bfs,
                 "dfs": dfs,
@@ -615,53 +649,81 @@ class ControlsWidget(QWidget):
                 "hill_climbing_max": hill_climbing_max,
                 "hill_climbing_random": hill_climbing_random,
                 "pdb_astar": pdb_astar,
-                # Thêm thuật toán mới ở đây
+                "rl_dqn": None,  # Placeholder cho Deep Q-Network
+                # Thêm các thuật toán mới
+                "simulated_annealing": simulated_annealing,
+                "genetic_algorithm": genetic_algorithm,
+                "local_beam_search": local_beam_search,
+                "and_or_search": and_or_graph_search,
+                "belief_states": belief_states_search,
+                "ac3": ac3_search,
+                "backtracking_1": backtracking_search_strategy1,
+                "backtracking_2": backtracking_search_strategy2,
             }
             
-            # Lấy hàm thuật toán dựa trên tên
-            algorithm_func = algorithm_funcs.get(algorithm_func_name)
-            if not algorithm_func:
-                self.solution_status.setText(f"Lỗi: Thuật toán {algorithm_func_name} chưa được triển khai!")
-                self.progress_bar.setVisible(False)
+            # Kiểm tra nếu thuật toán là RL, hiện thông báo
+            if algorithm_name == "rl_dqn":
+                self.solution_status.setText("Thuật toán Deep Q-Network đang trong quá trình phát triển!")
+                return
+                
+            if algorithm_name not in algorithm_funcs or algorithm_funcs[algorithm_name] is None:
+                self.solution_status.setText(f"Thuật toán {algorithm_display_name} chưa được triển khai!")
                 return
             
-            # Tạo và khởi động thread giải
-            self.solver_thread = SolverThread(algorithm_func, current_state, time_limit)
+            # Lấy thời gian giới hạn
+            time_limit = 30  # Mặc định
+            if hasattr(self, 'time_limit_spin'):
+                time_limit = self.time_limit_spin.value()
             
-            # Kết nối tín hiệu
-            self.solver_thread.solution_found.connect(self.on_solution_found)
-            self.solver_thread.progress_update.connect(self.on_progress_update)
-            self.solver_thread.error_occurred.connect(self.on_solver_error)
-            self.solver_thread.solver_finished.connect(self.on_solver_finished)
+            # Cập nhật UI
+            self.solution_status.setText(f"Đang giải với thuật toán {algorithm_display_name}...")
+            self.solution_time.setText("0 giây")
+            self.nodes_visited.setText("0")
+            self.solution_length.setText("0")
+            self.memory_usage.setText("0 trạng thái")
+            self.branching_factor.setText("0")
+            self.pruning_ratio.setText("0%")
+            self.detailed_stats.setPlainText("")
+            self.heuristic_stats.setPlainText("")
+            self.solution_moves.setPlainText("")
+            
+            # Tạo và hiển thị thanh tiến trình
+            if not hasattr(self, 'progress_bar'):
+                self.progress_bar = QProgressBar()
+                self.progress_bar.setRange(0, 0)  # Chế độ hoạt động liên tục
+                
+                # Tìm layout thích hợp để thêm thanh tiến trình
+                options_layout = None
+                
+                for layout in self.findChildren(QHBoxLayout):
+                    for i in range(layout.count()):
+                        item = layout.itemAt(i)
+                        if item.widget() and isinstance(item.widget(), QPushButton) and item.widget().text() == "Giải Rubik":
+                            options_layout = layout
+                            break
+                
+                if options_layout:
+                    options_layout.insertWidget(0, self.progress_bar)
+                else:
+                    # Nếu không tìm thấy, thêm vào layout chính
+                    self.layout().addWidget(self.progress_bar)
+                    
+            self.progress_bar.setVisible(True)
             
             # Tạo nút hủy nếu chưa có
             if not hasattr(self, 'cancel_btn'):
-                self.cancel_btn = QPushButton("Hủy giải")
+                self.cancel_btn = QPushButton("Hủy")
                 self.cancel_btn.clicked.connect(self.cancel_solving)
-                # Thêm vào layout
-                # Tìm layout chứa time_limit_spin
+                
+                # Tìm layout thích hợp để thêm nút hủy
                 options_layout = None
-                # Duyệt qua tất cả các layout con
-                for i in range(self.layout().count()):
-                    item = self.layout().itemAt(i)
-                    # Kiểm tra nếu là QSplitter (layout chính)
-                    if isinstance(item.widget(), QSplitter):
-                        splitter = item.widget()
-                        algo_widget = splitter.widget(1)  # Lấy phần algo_widget (widget thứ 2 trong splitter)
-                        # Duyệt qua các layout trong algo_widget
-                        for j in range(algo_widget.layout().count()):
-                            algo_item = algo_widget.layout().itemAt(j)
-                            # Tìm options_layout (thường là QHBoxLayout cuối cùng)
-                            if isinstance(algo_item, QHBoxLayout):
-                                # Duyệt qua các widget trong layout
-                                for k in range(algo_item.count()):
-                                    widget = algo_item.itemAt(k).widget()
-                                    if isinstance(widget, QSpinBox):  # time_limit_spin là QSpinBox
-                                        options_layout = algo_item
-                                        break
-                            if options_layout:
-                                break
-                        break
+                
+                for layout in self.findChildren(QHBoxLayout):
+                    for i in range(layout.count()):
+                        item = layout.itemAt(i)
+                        if item.widget() and isinstance(item.widget(), QPushButton) and item.widget().text() == "Giải Rubik":
+                            options_layout = layout
+                            break
                 
                 # Nếu không tìm thấy, thử cách khác
                 if not options_layout:
@@ -686,6 +748,15 @@ class ControlsWidget(QWidget):
                     self.layout().addWidget(self.cancel_btn)
             
             self.cancel_btn.setVisible(True)
+            
+            # Khởi động thread
+            self.solver_thread = SolverThread(algorithm_funcs[algorithm_name], current_state, time_limit)
+            
+            # Kết nối tín hiệu
+            self.solver_thread.solution_found.connect(self.on_solution_found)
+            self.solver_thread.progress_update.connect(self.on_progress_update)
+            self.solver_thread.error_occurred.connect(self.on_solver_error)
+            self.solver_thread.solver_finished.connect(self.on_solver_finished)
             
             # Khởi động thread
             self.solver_thread.start()
@@ -716,7 +787,15 @@ class ControlsWidget(QWidget):
             7: ("Hill Climbing Max", "hill_climbing_max"),
             8: ("Hill Climbing Random", "hill_climbing_random"),
             9: ("Pattern Database A*", "pdb_astar"),
-            10: ("Deep Q-Network", "rl_dqn")
+            10: ("Deep Q-Network", "rl_dqn"),
+            11: ("Simulated Annealing", "simulated_annealing"),
+            12: ("Genetic Algorithm", "genetic_algorithm"),
+            13: ("Local Beam Search", "local_beam_search"),
+            14: ("AND-OR Graph Search", "and_or_search"),
+            15: ("Belief States", "belief_states"),
+            16: ("AC-3", "ac3"),
+            17: ("Backtracking Search (Gán giá trị từng biến)", "backtracking_1"),
+            18: ("Backtracking Search (Kiểm tra ràng buộc sớm)", "backtracking_2")
             # Thêm thuật toán mới vào đây
         }
     

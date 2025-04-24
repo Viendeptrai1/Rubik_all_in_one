@@ -20,7 +20,15 @@ from RubikState.rubik_solver_2x2 import (
     ids_search_2x2,
     ida_star_search_2x2,
     hill_climbing_max_search_2x2,
-    hill_climbing_random_search_2x2
+    hill_climbing_random_search_2x2,
+    simulated_annealing_search_2x2,
+    genetic_algorithm_search_2x2,
+    local_beam_search_2x2,
+    and_or_graph_search_2x2,
+    belief_states_search_2x2,
+    ac3_search_2x2,
+    backtracking_search_strategy1_2x2,
+    backtracking_search_strategy2_2x2
 )
 
 # Import individual algorithm functions from 3x3 solver
@@ -33,7 +41,15 @@ from RubikState.rubik_solver_3x3 import (
     ids_search_3x3,
     ida_star_search_3x3,
     hill_climbing_max_search_3x3,
-    hill_climbing_random_search_3x3
+    hill_climbing_random_search_3x3,
+    simulated_annealing_search_3x3,
+    genetic_algorithm_search_3x3,
+    local_beam_search_3x3,
+    and_or_graph_search_3x3,
+    belief_states_search_3x3,
+    ac3_search_3x3,
+    backtracking_search_strategy1_3x3,
+    backtracking_search_strategy2_3x3
 )
 
 # Load the pattern database for 2x2 cube
@@ -108,6 +124,54 @@ def hill_climbing_random(state, time_limit=30, return_stats=False):
     if isinstance(state, Rubik2x2State):
         return hill_climbing_random_search_2x2(state, time_limit=time_limit, return_stats=return_stats)
     return hill_climbing_random_search_3x3(state, time_limit=time_limit, return_stats=return_stats)
+
+def simulated_annealing(state, time_limit=30, return_stats=False):
+    """Simulated Annealing algorithm for any Rubik's cube (auto detects type)"""
+    if isinstance(state, Rubik2x2State):
+        return simulated_annealing_search_2x2(state, time_limit=time_limit, return_stats=return_stats)
+    return simulated_annealing_search_3x3(state, time_limit=time_limit, return_stats=return_stats)
+
+def genetic_algorithm(state, time_limit=30, return_stats=False):
+    """Genetic Algorithm for any Rubik's cube (auto detects type)"""
+    if isinstance(state, Rubik2x2State):
+        return genetic_algorithm_search_2x2(state, time_limit=time_limit, return_stats=return_stats)
+    return genetic_algorithm_search_3x3(state, time_limit=time_limit, return_stats=return_stats)
+
+def local_beam_search(state, time_limit=30, return_stats=False):
+    """Local Beam Search algorithm for any Rubik's cube (auto detects type)"""
+    if isinstance(state, Rubik2x2State):
+        return local_beam_search_2x2(state, time_limit=time_limit, return_stats=return_stats)
+    return local_beam_search_3x3(state, time_limit=time_limit, return_stats=return_stats)
+
+def and_or_graph_search(state, time_limit=30, return_stats=False):
+    """AND-OR Graph Search algorithm for any Rubik's cube (auto detects type)"""
+    if isinstance(state, Rubik2x2State):
+        return and_or_graph_search_2x2(state, time_limit=time_limit, return_stats=return_stats)
+    return and_or_graph_search_3x3(state, time_limit=time_limit, return_stats=return_stats)
+
+def belief_states_search(state, time_limit=30, return_stats=False):
+    """Belief States Search algorithm for any Rubik's cube (auto detects type)"""
+    if isinstance(state, Rubik2x2State):
+        return belief_states_search_2x2(state, time_limit=time_limit, return_stats=return_stats)
+    return belief_states_search_3x3(state, time_limit=time_limit, return_stats=return_stats)
+
+def ac3_search(state, time_limit=30, return_stats=False):
+    """AC-3 (Arc Consistency Algorithm 3) for any Rubik's cube (auto detects type)"""
+    if isinstance(state, Rubik2x2State):
+        return ac3_search_2x2(state, time_limit=time_limit, return_stats=return_stats)
+    return ac3_search_3x3(state, time_limit=time_limit, return_stats=return_stats)
+
+def backtracking_search_strategy1(state, time_limit=30, return_stats=False):
+    """Backtracking Search Strategy 1 for any Rubik's cube (auto detects type)"""
+    if isinstance(state, Rubik2x2State):
+        return backtracking_search_strategy1_2x2(state, time_limit=time_limit, return_stats=return_stats)
+    return backtracking_search_strategy1_3x3(state, time_limit=time_limit, return_stats=return_stats)
+
+def backtracking_search_strategy2(state, time_limit=30, return_stats=False):
+    """Backtracking Search Strategy 2 for any Rubik's cube (auto detects type)"""
+    if isinstance(state, Rubik2x2State):
+        return backtracking_search_strategy2_2x2(state, time_limit=time_limit, return_stats=return_stats)
+    return backtracking_search_strategy2_3x3(state, time_limit=time_limit, return_stats=return_stats)
 
 def solve_rubik(start_state, algorithm="a_star", time_limit=30):
     """

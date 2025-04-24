@@ -11,6 +11,7 @@ import heapq
 import os
 import pickle
 from collections import deque
+import math
 
 # Import 3x3 specific classes and constants
 from RubikState.rubik_chen import RubikState, SOLVED_STATE_3x3, MOVES_3x3, heuristic_3x3
@@ -1165,41 +1166,43 @@ def hill_climbing_random_search_3x3(start_state, goal_state=None, moves_dict=Non
 
 def solve_3x3(start_state, algorithm="a_star", time_limit=30, return_stats=False):
     """
-    Main function to solve a 3x3 Rubik's cube with the specified algorithm
+    Solve 3x3 Rubik's cube using specified algorithm
     
     Args:
         start_state: Starting state (RubikState)
-        algorithm: Algorithm to use (default is "a_star")
-        time_limit: Time limit in seconds (default is 30)
-        return_stats: Whether to return detailed statistics (default is False)
+        algorithm: Name of algorithm to use
+        time_limit: Time limit in seconds
+        return_stats: Whether to return detailed statistics
         
     Returns:
-        tuple: (path, nodes_visited, time_taken) or (path, nodes_visited, time_taken, stats)
+        tuple: (solution_path, nodes_visited, time_taken) or (solution_path, nodes_visited, time_taken, stats)
     """
-    print(f"Solving 3x3 Rubik's cube with {algorithm} algorithm...")
+    algorithm_funcs = {
+        "a_star": a_star_search_3x3,
+        "bfs": bfs_search_3x3,
+        "dfs": dfs_search_3x3,
+        "ucs": ucs_search_3x3,
+        "greedy_best_first": greedy_best_first_search_3x3,
+        "ida_star": ida_star_search_3x3,
+        "ids": ids_search_3x3,
+        "hill_climbing_max": hill_climbing_max_search_3x3,
+        "hill_climbing_random": hill_climbing_random_search_3x3,
+        # Thêm các thuật toán mới
+        "simulated_annealing": simulated_annealing_search_3x3,
+        "genetic_algorithm": genetic_algorithm_search_3x3,
+        "local_beam_search": local_beam_search_3x3,
+        "and_or_graph_search": and_or_graph_search_3x3,
+        "belief_states_search": belief_states_search_3x3,
+        "ac3": ac3_search_3x3,
+        "backtracking_strategy1": backtracking_search_strategy1_3x3,
+        "backtracking_strategy2": backtracking_search_strategy2_3x3,
+    }
     
-    # Select appropriate algorithm
-    if algorithm.lower() == "a_star":
-        return a_star_search_3x3(start_state, time_limit=time_limit, return_stats=return_stats)
-    elif algorithm.lower() == "bfs":
-        return bfs_search_3x3(start_state, time_limit=time_limit, return_stats=return_stats)
-    elif algorithm.lower() == "dfs":
-        return dfs_search_3x3(start_state, time_limit=time_limit, return_stats=return_stats)
-    elif algorithm.lower() == "ucs":
-        return ucs_search_3x3(start_state, time_limit=time_limit, return_stats=return_stats)
-    elif algorithm.lower() == "greedy":
-        return greedy_best_first_search_3x3(start_state, time_limit=time_limit, return_stats=return_stats)
-    elif algorithm.lower() == "ids":
-        return ids_search_3x3(start_state, time_limit=time_limit, return_stats=return_stats)
-    elif algorithm.lower() == "ida_star":
-        return ida_star_search_3x3(start_state, time_limit=time_limit, return_stats=return_stats)
-    elif algorithm.lower() == "hill_climbing" or algorithm.lower() == "hill_max":
-        return hill_climbing_max_search_3x3(start_state, time_limit=time_limit, return_stats=return_stats)
-    elif algorithm.lower() == "hill_random":
-        return hill_climbing_random_search_3x3(start_state, time_limit=time_limit, return_stats=return_stats)
-    else:
-        print(f"Unknown algorithm: {algorithm}, using A* instead")
-        return a_star_search_3x3(start_state, time_limit=time_limit, return_stats=return_stats)
+    if algorithm not in algorithm_funcs:
+        raise ValueError(f"Unknown algorithm: {algorithm}")
+    
+    func = algorithm_funcs[algorithm]
+    return func(start_state, time_limit=time_limit, return_stats=return_stats)
 
 def test_scramble_3x3(scramble_moves, algorithm="a_star", time_limit=30):
     """
@@ -1246,6 +1249,424 @@ def test_scramble_3x3(scramble_moves, algorithm="a_star", time_limit=30):
         print(f"No solution found within {time_limit} seconds")
         print(f"Nodes explored: {nodes}")
         return False
+
+def simulated_annealing_search_3x3(start_state, goal_state=None, moves_dict=None, time_limit=30, max_iterations=1000, initial_temp=100, cooling_rate=0.95, return_stats=False):
+    """
+    Simulated Annealing search algorithm for 3x3 Rubik's cube
+    
+    Args:
+        start_state: Starting state (RubikState)
+        goal_state: Goal state (default is SOLVED_STATE)
+        moves_dict: Dictionary of moves (default is MOVES)
+        time_limit: Time limit in seconds (default is 30)
+        max_iterations: Maximum number of iterations (default is 1000)
+        initial_temp: Initial temperature (default is 100)
+        cooling_rate: Rate at which temperature decreases (default is 0.95)
+        return_stats: Whether to return detailed statistics (default is False)
+    
+    Returns:
+        tuple: (path, nodes_visited, time_taken) or (path, nodes_visited, time_taken, stats)
+    """
+    # Set defaults if not provided
+    from RubikState.rubik_chen import SOLVED_STATE, MOVES
+    goal_state = goal_state or SOLVED_STATE
+    moves_dict = moves_dict or MOVES
+    
+    # Get list of move names
+    move_names = list(moves_dict.keys())
+    
+    # Count visited nodes
+    nodes_visited = 0
+    
+    # Thêm thống kê
+    if return_stats:
+        stats = {
+            'memory_used': 1,              # Số lượng trạng thái được lưu trong bộ nhớ
+            'total_generated': 0,           # Tổng số trạng thái được tạo ra
+            'accepted_worse': 0,            # Số lần chấp nhận trạng thái tệ hơn
+            'temperature_curve': [],        # Đường cong nhiệt độ
+            'best_h_values': [],            # Giá trị heuristic tốt nhất theo thời gian
+            'current_h_values': [],         # Giá trị heuristic hiện tại theo thời gian
+        }
+
+    # TODO: Implement Simulated Annealing algorithm
+    # Current implementation is just a placeholder
+
+    start_time = time.time()
+    current_state = start_state
+    current_path = []
+    current_h = heuristic_3x3(current_state)
+    best_state = current_state
+    best_path = current_path
+    best_h = current_h
+    
+    temperature = initial_temp
+    iteration = 0
+    
+    while time.time() - start_time < time_limit and iteration < max_iterations and best_h > 0:
+        # Choose a random move
+        move = random.choice(move_names)
+        new_state = current_state.apply_move(move, moves_dict)
+        nodes_visited += 1
+        new_h = heuristic_3x3(new_state)
+        
+        if return_stats:
+            stats['total_generated'] += 1
+        
+        # Calculate energy/cost change
+        delta_h = new_h - current_h
+        
+        # Accept if better, or with some probability if worse
+        if delta_h <= 0 or random.random() < math.exp(-delta_h / temperature):
+            current_state = new_state
+            current_path.append(move)
+            current_h = new_h
+            
+            if return_stats and delta_h > 0:
+                stats['accepted_worse'] += 1
+        
+        # Update best solution if found better
+        if current_h < best_h:
+            best_state = current_state
+            best_path = list(current_path)
+            best_h = current_h
+        
+        # Cool down
+        temperature *= cooling_rate
+        iteration += 1
+        
+        if return_stats:
+            stats['temperature_curve'].append(temperature)
+            stats['best_h_values'].append(best_h)
+            stats['current_h_values'].append(current_h)
+    
+    end_time = time.time()
+    
+    # If we found the goal state
+    if best_state == goal_state:
+        if return_stats:
+            return best_path, nodes_visited, end_time - start_time, stats
+        return best_path, nodes_visited, end_time - start_time
+    
+    # No solution found
+    if return_stats:
+        return None, nodes_visited, end_time - start_time, stats
+    return None, nodes_visited, end_time - start_time
+
+def genetic_algorithm_search_3x3(start_state, goal_state=None, moves_dict=None, time_limit=30, population_size=100, generations=1000, mutation_rate=0.1, return_stats=False):
+    """
+    Genetic Algorithm search for 3x3 Rubik's cube
+    
+    Args:
+        start_state: Starting state (RubikState)
+        goal_state: Goal state (default is SOLVED_STATE)
+        moves_dict: Dictionary of moves (default is MOVES)
+        time_limit: Time limit in seconds (default is 30)
+        population_size: Size of the population (default is 100)
+        generations: Maximum number of generations (default is 1000)
+        mutation_rate: Probability of mutation (default is 0.1)
+        return_stats: Whether to return detailed statistics (default is False)
+    
+    Returns:
+        tuple: (path, nodes_visited, time_taken) or (path, nodes_visited, time_taken, stats)
+    """
+    # Set defaults if not provided
+    from RubikState.rubik_chen import SOLVED_STATE, MOVES
+    goal_state = goal_state or SOLVED_STATE
+    moves_dict = moves_dict or MOVES
+    
+    # Get list of move names
+    move_names = list(moves_dict.keys())
+    
+    # Count visited nodes
+    nodes_visited = 0
+    
+    # Thêm thống kê
+    if return_stats:
+        stats = {
+            'memory_used': population_size,    # Số lượng trạng thái được lưu trong bộ nhớ
+            'total_generated': 0,              # Tổng số trạng thái được tạo ra
+            'best_fitness': [],                # Độ thích nghi tốt nhất theo thế hệ
+            'avg_fitness': [],                 # Độ thích nghi trung bình theo thế hệ
+            'diversity': [],                   # Đa dạng quần thể theo thế hệ
+        }
+
+    # TODO: Implement Genetic Algorithm
+    # Current implementation is just a placeholder
+    
+    start_time = time.time()
+    # No solution found
+    if return_stats:
+        return None, nodes_visited, time.time() - start_time, stats
+    return None, nodes_visited, time.time() - start_time
+
+def local_beam_search_3x3(start_state, goal_state=None, moves_dict=None, time_limit=30, beam_width=10, max_iterations=1000, return_stats=False):
+    """
+    Local Beam Search algorithm for 3x3 Rubik's cube
+    
+    Args:
+        start_state: Starting state (RubikState)
+        goal_state: Goal state (default is SOLVED_STATE)
+        moves_dict: Dictionary of moves (default is MOVES)
+        time_limit: Time limit in seconds (default is 30)
+        beam_width: Number of states to keep track of (default is 10)
+        max_iterations: Maximum number of iterations (default is 1000)
+        return_stats: Whether to return detailed statistics (default is False)
+    
+    Returns:
+        tuple: (path, nodes_visited, time_taken) or (path, nodes_visited, time_taken, stats)
+    """
+    # Set defaults if not provided
+    from RubikState.rubik_chen import SOLVED_STATE, MOVES
+    goal_state = goal_state or SOLVED_STATE
+    moves_dict = moves_dict or MOVES
+    
+    # Get list of move names
+    move_names = list(moves_dict.keys())
+    
+    # Count visited nodes
+    nodes_visited = 0
+    
+    # Thêm thống kê
+    if return_stats:
+        stats = {
+            'memory_used': beam_width,         # Số lượng trạng thái được lưu trong bộ nhớ
+            'total_generated': 0,              # Tổng số trạng thái được tạo ra
+            'best_h_values': [],               # Giá trị heuristic tốt nhất theo lần lặp
+            'beam_diversity': [],              # Đa dạng của các trạng thái trong beam
+        }
+
+    # TODO: Implement Local Beam Search
+    # Current implementation is just a placeholder
+    
+    start_time = time.time()
+    # No solution found
+    if return_stats:
+        return None, nodes_visited, time.time() - start_time, stats
+    return None, nodes_visited, time.time() - start_time
+
+def and_or_graph_search_3x3(start_state, goal_state=None, moves_dict=None, time_limit=30, max_depth=10, return_stats=False):
+    """
+    AND-OR Graph Search algorithm for 3x3 Rubik's cube
+    For complex environment search problems
+    
+    Args:
+        start_state: Starting state (RubikState)
+        goal_state: Goal state (default is SOLVED_STATE)
+        moves_dict: Dictionary of moves (default is MOVES)
+        time_limit: Time limit in seconds (default is 30)
+        max_depth: Maximum search depth (default is 10)
+        return_stats: Whether to return detailed statistics (default is False)
+    
+    Returns:
+        tuple: (path, nodes_visited, time_taken) or (path, nodes_visited, time_taken, stats)
+    """
+    # Set defaults if not provided
+    from RubikState.rubik_chen import SOLVED_STATE, MOVES
+    goal_state = goal_state or SOLVED_STATE
+    moves_dict = moves_dict or MOVES
+    
+    # Get list of move names
+    move_names = list(moves_dict.keys())
+    
+    # Count visited nodes
+    nodes_visited = 0
+    
+    # Thêm thống kê
+    if return_stats:
+        stats = {
+            'memory_used': 0,                  # Số lượng trạng thái được lưu trong bộ nhớ
+            'total_generated': 0,              # Tổng số trạng thái được tạo ra
+            'and_nodes': 0,                    # Số nút AND
+            'or_nodes': 0,                     # Số nút OR
+        }
+
+    # TODO: Implement AND-OR Graph Search
+    # Current implementation is just a placeholder
+    
+    start_time = time.time()
+    # No solution found
+    if return_stats:
+        return None, nodes_visited, time.time() - start_time, stats
+    return None, nodes_visited, time.time() - start_time
+
+def belief_states_search_3x3(start_state, goal_state=None, moves_dict=None, time_limit=30, max_iterations=1000, return_stats=False):
+    """
+    Belief States Search algorithm for 3x3 Rubik's cube
+    For complex environment search problems with uncertainty
+    
+    Args:
+        start_state: Starting state (RubikState)
+        goal_state: Goal state (default is SOLVED_STATE)
+        moves_dict: Dictionary of moves (default is MOVES)
+        time_limit: Time limit in seconds (default is 30)
+        max_iterations: Maximum number of iterations (default is 1000)
+        return_stats: Whether to return detailed statistics (default is False)
+    
+    Returns:
+        tuple: (path, nodes_visited, time_taken) or (path, nodes_visited, time_taken, stats)
+    """
+    # Set defaults if not provided
+    from RubikState.rubik_chen import SOLVED_STATE, MOVES
+    goal_state = goal_state or SOLVED_STATE
+    moves_dict = moves_dict or MOVES
+    
+    # Get list of move names
+    move_names = list(moves_dict.keys())
+    
+    # Count visited nodes
+    nodes_visited = 0
+    
+    # Thêm thống kê
+    if return_stats:
+        stats = {
+            'memory_used': 0,                  # Số lượng trạng thái được lưu trong bộ nhớ
+            'total_generated': 0,              # Tổng số trạng thái được tạo ra
+            'belief_state_sizes': [],          # Kích thước của các belief state
+            'entropy': [],                     # Entropy của belief state theo thời gian
+        }
+
+    # TODO: Implement Belief States Search
+    # Current implementation is just a placeholder
+    
+    start_time = time.time()
+    # No solution found
+    if return_stats:
+        return None, nodes_visited, time.time() - start_time, stats
+    return None, nodes_visited, time.time() - start_time
+
+def ac3_search_3x3(start_state, goal_state=None, moves_dict=None, time_limit=30, return_stats=False):
+    """
+    AC-3 (Arc Consistency Algorithm 3) for 3x3 Rubik's cube
+    Constraint Satisfaction Problem approach
+    
+    Args:
+        start_state: Starting state (RubikState)
+        goal_state: Goal state (default is SOLVED_STATE)
+        moves_dict: Dictionary of moves (default is MOVES)
+        time_limit: Time limit in seconds (default is 30)
+        return_stats: Whether to return detailed statistics (default is False)
+    
+    Returns:
+        tuple: (path, nodes_visited, time_taken) or (path, nodes_visited, time_taken, stats)
+    """
+    # Set defaults if not provided
+    from RubikState.rubik_chen import SOLVED_STATE, MOVES
+    goal_state = goal_state or SOLVED_STATE
+    moves_dict = moves_dict or MOVES
+    
+    # Get list of move names
+    move_names = list(moves_dict.keys())
+    
+    # Count visited nodes
+    nodes_visited = 0
+    
+    # Thêm thống kê
+    if return_stats:
+        stats = {
+            'memory_used': 0,                  # Số lượng trạng thái được lưu trong bộ nhớ
+            'total_generated': 0,              # Tổng số trạng thái được tạo ra
+            'arcs_processed': 0,               # Số cung đã xử lý
+            'domain_reductions': 0,            # Số lần giảm miền giá trị
+        }
+
+    # TODO: Implement AC-3 algorithm
+    # Current implementation is just a placeholder
+    
+    start_time = time.time()
+    # No solution found
+    if return_stats:
+        return None, nodes_visited, time.time() - start_time, stats
+    return None, nodes_visited, time.time() - start_time
+
+def backtracking_search_strategy1_3x3(start_state, goal_state=None, moves_dict=None, time_limit=30, return_stats=False):
+    """
+    Backtracking Search for 3x3 Rubik's cube - Strategy 1 (Variable Assignment)
+    Standard CSP backtracking, assigning values to one variable at a time
+    
+    Args:
+        start_state: Starting state (RubikState)
+        goal_state: Goal state (default is SOLVED_STATE)
+        moves_dict: Dictionary of moves (default is MOVES)
+        time_limit: Time limit in seconds (default is 30)
+        return_stats: Whether to return detailed statistics (default is False)
+    
+    Returns:
+        tuple: (path, nodes_visited, time_taken) or (path, nodes_visited, time_taken, stats)
+    """
+    # Set defaults if not provided
+    from RubikState.rubik_chen import SOLVED_STATE, MOVES
+    goal_state = goal_state or SOLVED_STATE
+    moves_dict = moves_dict or MOVES
+    
+    # Get list of move names
+    move_names = list(moves_dict.keys())
+    
+    # Count visited nodes
+    nodes_visited = 0
+    
+    # Thêm thống kê
+    if return_stats:
+        stats = {
+            'memory_used': 0,                  # Số lượng trạng thái được lưu trong bộ nhớ
+            'total_generated': 0,              # Tổng số trạng thái được tạo ra
+            'backtracks': 0,                   # Số lần quay lui
+            'constraints_checked': 0,          # Số lần kiểm tra ràng buộc
+        }
+
+    # TODO: Implement Backtracking Search Strategy 1
+    # Current implementation is just a placeholder
+    
+    start_time = time.time()
+    # No solution found
+    if return_stats:
+        return None, nodes_visited, time.time() - start_time, stats
+    return None, nodes_visited, time.time() - start_time
+
+def backtracking_search_strategy2_3x3(start_state, goal_state=None, moves_dict=None, time_limit=30, return_stats=False):
+    """
+    Backtracking Search for 3x3 Rubik's cube - Strategy 2 (Early Constraint Check)
+    CSP backtracking with forward checking to prune search space
+    
+    Args:
+        start_state: Starting state (RubikState)
+        goal_state: Goal state (default is SOLVED_STATE)
+        moves_dict: Dictionary of moves (default is MOVES)
+        time_limit: Time limit in seconds (default is 30)
+        return_stats: Whether to return detailed statistics (default is False)
+    
+    Returns:
+        tuple: (path, nodes_visited, time_taken) or (path, nodes_visited, time_taken, stats)
+    """
+    # Set defaults if not provided
+    from RubikState.rubik_chen import SOLVED_STATE, MOVES
+    goal_state = goal_state or SOLVED_STATE
+    moves_dict = moves_dict or MOVES
+    
+    # Get list of move names
+    move_names = list(moves_dict.keys())
+    
+    # Count visited nodes
+    nodes_visited = 0
+    
+    # Thêm thống kê
+    if return_stats:
+        stats = {
+            'memory_used': 0,                  # Số lượng trạng thái được lưu trong bộ nhớ
+            'total_generated': 0,              # Tổng số trạng thái được tạo ra
+            'backtracks': 0,                   # Số lần quay lui
+            'constraints_checked': 0,          # Số lần kiểm tra ràng buộc
+            'pruned_branches': 0,              # Số nhánh bị cắt tỉa
+        }
+
+    # TODO: Implement Backtracking Search Strategy 2
+    # Current implementation is just a placeholder
+    
+    start_time = time.time()
+    # No solution found
+    if return_stats:
+        return None, nodes_visited, time.time() - start_time, stats
+    return None, nodes_visited, time.time() - start_time
 
 if __name__ == "__main__":
     # Test the 3x3 solver with a simple scramble
