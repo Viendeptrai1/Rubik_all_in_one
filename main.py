@@ -9,7 +9,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle('Rubik All-in-One')
-        self.resize(1400, 900)
+        self.resize(1600, 1000)
 
         # Widget chính chứa layout
         central_widget = QWidget()
@@ -34,9 +34,22 @@ class MainWindow(QMainWindow):
         layout_2x2.addWidget(self.rubik_widget_2x2)
         tab_2x2.setLayout(layout_2x2)
         
+        # Tab cho CSP
+        tab_csp = QWidget()
+        layout_csp = QVBoxLayout()
+        # Label tạm thời
+        csp_label = QLabel("CSP (Constraint Satisfaction Problem) sẽ được triển khai sau")
+        csp_label.setAlignment(Qt.AlignCenter)
+        font = QFont()
+        font.setPointSize(14)
+        csp_label.setFont(font)
+        layout_csp.addWidget(csp_label)
+        tab_csp.setLayout(layout_csp)
+        
         # Thêm các tab vào tab widget
         tabs.addTab(tab_3x3, "Rubik 3x3")
         tabs.addTab(tab_2x2, "Rubik 2x2")
+        tabs.addTab(tab_csp, "CSP")
         
         # Kết nối sự kiện khi chuyển tab
         tabs.currentChanged.connect(self.on_tab_changed)
@@ -55,17 +68,24 @@ class MainWindow(QMainWindow):
         self.addDockWidget(Qt.RightDockWidgetArea, dock)
         
         # Set kích thước cố định cho dock
-        dock.setFixedWidth(600)
+        dock.setFixedWidth(700)
     
     def on_tab_changed(self, index):
         """Xử lý khi người dùng chuyển tab"""
         if index == 0:  # Rubik 3x3
             self.current_rubik_widget = self.rubik_widget_3x3
-        else:  # Rubik 2x2
+            self.controls.setVisible(True)
+        elif index == 1:  # Rubik 2x2
             self.current_rubik_widget = self.rubik_widget_2x2
-        
-        # Cập nhật widget hiện tại cho controls
-        self.controls.set_rubik_widget(self.current_rubik_widget)
+            self.controls.setVisible(True)
+        else:  # CSP
+            # Ẩn controls widget khi ở tab CSP vì CSP sẽ có giao diện riêng
+            self.controls.setVisible(False)
+            return
+            
+        # Chỉ cập nhật widget controls nếu đang ở tab Rubik
+        if index < 2:
+            self.controls.set_rubik_widget(self.current_rubik_widget)
 
 def main():
     app = QApplication(sys.argv)
