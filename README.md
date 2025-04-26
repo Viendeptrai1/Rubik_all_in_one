@@ -51,22 +51,22 @@ Hệ thống theo dõi và phân tích các chỉ số hiệu suất chính:
 ### Thuật Toán Tìm Kiếm Cục Bộ
 - ✅ Leo Đồi (Steepest Ascent)
 - ✅ Leo Đồi với Khởi Động Lại Ngẫu Nhiên
-- ✅ Mô Phỏng Luyện Kim (Simulated Annealing)
-- ✅ Thuật Toán Di Truyền (Genetic Algorithm)
-- ✅ Tìm Kiếm Chùm Cục Bộ (Local Beam Search)
+- ⏳ Mô Phỏng Luyện Kim (Simulated Annealing) - Đang phát triển
+- ⏳ Thuật Toán Di Truyền (Genetic Algorithm) - Đang phát triển
+- ⏳ Tìm Kiếm Chùm Cục Bộ (Local Beam Search) - Đang phát triển
 
 ### Tìm Kiếm Trong Môi Trường Phức Tạp
-- ✅ Tìm Kiếm Đồ Thị AND-OR
-- ✅ Tìm Kiếm Trạng Thái Niềm Tin (Belief States)
+- ⏳ Tìm Kiếm Đồ Thị AND-OR - Đang phát triển
+- ⏳ Tìm Kiếm Trạng Thái Niềm Tin (Belief States) - Đang phát triển
 
 ### Tiếp Cận Bài Toán Thỏa Mãn Ràng Buộc
-- ✅ Thuật Toán Kiểm Tra Tính Nhất Quán AC-3
-- ✅ Tìm Kiếm Quay Lui (Gán Biến)
-- ✅ Tìm Kiếm Quay Lui (Kiểm Tra Trước)
+- ⏳ Thuật Toán Kiểm Tra Tính Nhất Quán AC-3 - Đang phát triển
+- ⏳ Tìm Kiếm Quay Lui (Gán Biến) - Đang phát triển
+- ⏳ Tìm Kiếm Quay Lui (Kiểm Tra Trước) - Đang phát triển
 
 ### Kỹ Thuật Nâng Cao
 - ✅ A* với Cơ Sở Dữ Liệu Mẫu (Pattern Database) cho khối 2×2
-- ⏳ Mạng Q Sâu (DQN) - Đang Phát Triển
+- ⏳ Mạng Q Sâu (DQN) - Đang phát triển
 
 ## Thuật Toán Dự Kiến (TODO)
 - ⏳ Tìm Kiếm Cây Monte Carlo (MCTS)
