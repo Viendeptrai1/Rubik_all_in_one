@@ -92,160 +92,100 @@ class ControlsWidget(QWidget):
         pass
 
     def init_ui(self):
-        # Main layout - Sử dụng QVBoxLayout cho toàn bộ widget
+        # Main layout
         main_layout = QVBoxLayout()
         
-        # ===== PHẦN TRÊN: ĐIỀU KHIỂN VÀ THÔNG TIN (chiếm 1/2 diện tích) =====
-        top_widget = QWidget()
-        top_layout = QHBoxLayout()
-        top_widget.setLayout(top_layout)
+        # ==== TẠO BỐ CỤC 3 PHẦN ====
         
-        # -- PHẦN 1: ĐIỀU KHIỂN CƠ BẢN (bên trái) --
-        basic_controls = QGroupBox("Điều khiển cơ bản")
-        basic_layout = QVBoxLayout()
+        # ----- PHẦN TRÊN: Thanh ngang chia 2 panel trái và phải -----
+        top_splitter = QSplitter(Qt.Horizontal)
+        
+        # -- PHẦN TRÊN TRÁI: ĐIỀU KHIỂN CƠ BẢN --
+        top_left_widget = QWidget()
+        top_left_layout = QVBoxLayout()
+        top_left_widget.setLayout(top_left_layout)
+        
+        # Đặt tiêu đề
+        top_left_layout.addWidget(QLabel("<b>Điều khiển cơ bản</b>"))
         
         # Input moves group
+        top_left_layout.addWidget(QLabel("Nhập nước đi:"))
         moves_input = QLineEdit()
-        moves_input.setPlaceholderText("Nhập nước đi (ví dụ: R U R' U')")
+        moves_input.setPlaceholderText("Ví dụ: R U R' U' F R U F' U'")
         self.moves_input = moves_input
-        # Kết nối sự kiện Enter với hàm apply_moves
         self.moves_input.returnPressed.connect(self.apply_moves)
+        top_left_layout.addWidget(moves_input)
         
         apply_btn = QPushButton("Áp dụng")
         apply_btn.clicked.connect(self.apply_moves)
-        
-        basic_layout.addWidget(QLabel("Nhập nước đi:"))
-        basic_layout.addWidget(moves_input)
-        basic_layout.addWidget(apply_btn)
+        top_left_layout.addWidget(apply_btn)
         
         # Control buttons
         buttons_layout = QHBoxLayout()
-        reset_btn = QPushButton("Reset")
-        shuffle_btn = QPushButton("Xáo trộn")
+        reset_btn = QPushButton("Reset Rubik")
         reset_btn.clicked.connect(self.reset_cube)
+        shuffle_btn = QPushButton("Xáo trộn")
         shuffle_btn.clicked.connect(self.shuffle_cube)
         buttons_layout.addWidget(reset_btn)
         buttons_layout.addWidget(shuffle_btn)
-        basic_layout.addLayout(buttons_layout)
+        top_left_layout.addLayout(buttons_layout)
         
-        # Solution Results
-        basic_layout.addWidget(QLabel("Kết quả giải:"))
+        # Lời giải
+        solution_group = QGroupBox("Lời giải")
+        solution_layout = QVBoxLayout()
         
-        # Hiển thị trạng thái giải
-        self.solution_status = QLabel("Sẵn sàng")
-        basic_layout.addWidget(self.solution_status)
-        
-        # Hiển thị thống kê
-        stats_layout = QGridLayout()
-        stats_layout.addWidget(QLabel("Thời gian:"), 0, 0)
-        self.solution_time = QLabel("0 giây")
-        stats_layout.addWidget(self.solution_time, 0, 1)
-        
-        stats_layout.addWidget(QLabel("Số nút đã duyệt:"), 1, 0)
-        self.nodes_visited = QLabel("0")
-        stats_layout.addWidget(self.nodes_visited, 1, 1)
-        
-        stats_layout.addWidget(QLabel("Độ dài lời giải:"), 2, 0)
-        self.solution_length = QLabel("0")
-        stats_layout.addWidget(self.solution_length, 2, 1)
-        
-        # Thêm các thông số phân tích mới
-        stats_layout.addWidget(QLabel("Bộ nhớ sử dụng:"), 3, 0)
-        self.memory_usage = QLabel("0 trạng thái")
-        stats_layout.addWidget(self.memory_usage, 3, 1)
-        
-        stats_layout.addWidget(QLabel("Hệ số phân nhánh:"), 4, 0)
-        self.branching_factor = QLabel("0")
-        stats_layout.addWidget(self.branching_factor, 4, 1)
-        
-        stats_layout.addWidget(QLabel("Tỷ lệ cắt tỉa:"), 5, 0)
-        self.pruning_ratio = QLabel("0%")
-        stats_layout.addWidget(self.pruning_ratio, 5, 1)
-        
-        basic_layout.addLayout(stats_layout)
-        
-        # Tab cho phân tích chi tiết
-        self.analysis_tabs = QTabWidget()
-        
-        # Tab thống kê chung
-        basic_stats_tab = QWidget()
-        basic_stats_layout = QVBoxLayout()
-        basic_stats_tab.setLayout(basic_stats_layout)
-        
-        # Thêm các thông số phân tích chi tiết
-        self.detailed_stats = QTextEdit()
-        self.detailed_stats.setReadOnly(True)
-        self.detailed_stats.setFixedHeight(80)
-        basic_stats_layout.addWidget(self.detailed_stats)
-        
-        # Tab phân tích heuristic
-        heuristic_tab = QWidget()
-        heuristic_layout = QVBoxLayout()
-        heuristic_tab.setLayout(heuristic_layout)
-        
-        self.heuristic_stats = QTextEdit()
-        self.heuristic_stats.setReadOnly(True)
-        self.heuristic_stats.setFixedHeight(80)
-        heuristic_layout.addWidget(self.heuristic_stats)
-        
-        # Thêm các tab vào TabWidget
-        self.analysis_tabs.addTab(basic_stats_tab, "Thống kê")
-        self.analysis_tabs.addTab(heuristic_tab, "Heuristic")
-        
-        basic_layout.addWidget(self.analysis_tabs)
-        
-        # Hiển thị lời giải
-        basic_layout.addWidget(QLabel("Lời giải:"))
         self.solution_moves = QTextEdit()
         self.solution_moves.setReadOnly(True)
-        self.solution_moves.setFixedHeight(60)
-        basic_layout.addWidget(self.solution_moves)
+        self.solution_moves.setFixedHeight(80)
+        solution_layout.addWidget(self.solution_moves)
         
-        # Nút áp dụng lời giải
         apply_solution_btn = QPushButton("Áp dụng lời giải")
         apply_solution_btn.clicked.connect(self.apply_solution)
-        basic_layout.addWidget(apply_solution_btn)
+        solution_layout.addWidget(apply_solution_btn)
         
-        basic_controls.setLayout(basic_layout)
+        solution_group.setLayout(solution_layout)
+        top_left_layout.addWidget(solution_group)
         
-        # -- PHẦN 2: THÔNG TIN RUBIK (bên phải) --
-        info_panel = QGroupBox("Thông tin rubik")
-        info_layout = QVBoxLayout()
+        # -- PHẦN TRÊN PHẢI: THÔNG TIN RUBIK --
+        top_right_widget = QWidget()
+        top_right_layout = QVBoxLayout()
+        top_right_widget.setLayout(top_right_layout)
+        
+        # Đặt tiêu đề
+        top_right_layout.addWidget(QLabel("<b>Thông tin Rubik</b>"))
         
         # TextEdit để hiển thị trạng thái
         self.state_display = QTextEdit()
         self.state_display.setReadOnly(True)
-        info_layout.addWidget(self.state_display)
+        top_right_layout.addWidget(self.state_display)
         
-        info_panel.setLayout(info_layout)
+        # Thêm top left và top right vào top splitter
+        top_splitter.addWidget(top_left_widget)
+        top_splitter.addWidget(top_right_widget)
         
-        # Thêm hai phần vào top_layout
-        top_layout.addWidget(basic_controls, 1)  # Tỷ lệ 1
-        top_layout.addWidget(info_panel, 3)      # Tỷ lệ 3 - làm cho phần bên phải rộng hơn, chiếm 3/4
+        # Đặt tỷ lệ phân chia phần trên (1:3)
+        top_splitter.setSizes([300, 700])
         
-        # ===== PHẦN DƯỚI: CÁC NHÓM THUẬT TOÁN (chiếm 1/2 diện tích) =====
-        algo_widget = QWidget()
-        algo_layout = QVBoxLayout()
-        algo_widget.setLayout(algo_layout)
+        # ----- PHẦN DƯỚI: THUẬT TOÁN VÀ KẾT QUẢ -----
+        bottom_widget = QWidget()
+        bottom_layout = QVBoxLayout()
+        bottom_widget.setLayout(bottom_layout)
         
-        # Tiêu đề
-        algo_layout.addWidget(QLabel("<b>Các nhóm thuật toán</b>"))
+        # === TABS THUẬT TOÁN ===
+        algo_tabs = QTabWidget()
         
-        # Grid layout cho các nhóm thuật toán (3 cột)
-        algo_grid = QGridLayout()
-        
-        # Tạo button group để chỉ một radio được chọn
+        # Tạo button group cho các radio button
         self.algorithm_button_group = QButtonGroup(self)
         
-        # Nhóm 1: Tìm kiếm không có thông tin (Uninformed Search)
-        uninformed_group = QGroupBox("Tìm kiếm không có thông tin\n(Uninformed Search)")
-        uninformed_layout = QVBoxLayout()
+        # --- Tab 1: Thuật toán không thông tin ---
+        uninformed_tab = QWidget()
+        uninformed_layout = QVBoxLayout(uninformed_tab)
         
-        # Tạo các radio buttons cho nhóm 1
-        self.bfs_radio = QRadioButton("Breadth-First Search")
-        self.dfs_radio = QRadioButton("Depth-First Search")
-        self.ids_radio = QRadioButton("Iterative Deepening Search")
-        self.ucs_radio = QRadioButton("Uniform Cost Search")
+        # Radio buttons
+        self.bfs_radio = QRadioButton("Breadth-First Search (BFS)")
+        self.dfs_radio = QRadioButton("Depth-First Search (DFS)")
+        self.ucs_radio = QRadioButton("Uniform Cost Search (UCS)")
+        self.ids_radio = QRadioButton("Iterative Deepening Search (IDS)")
         
         # Thêm vào button group
         self.algorithm_button_group.addButton(self.bfs_radio, 0)
@@ -261,103 +201,62 @@ class ControlsWidget(QWidget):
         uninformed_layout.addWidget(self.dfs_radio)
         uninformed_layout.addWidget(self.ucs_radio)
         uninformed_layout.addWidget(self.ids_radio)
-        uninformed_group.setLayout(uninformed_layout)
+        uninformed_layout.addStretch()
         
-        # Nhóm 2: Tìm kiếm có thông tin (Informed Search)
-        informed_group = QGroupBox("Tìm kiếm có thông tin\n(Informed Search)")
-        informed_layout = QVBoxLayout()
+        # --- Tab 2: Thuật toán có thông tin ---
+        informed_tab = QWidget()
+        informed_layout = QVBoxLayout(informed_tab)
         
-        # Tạo các radio buttons cho nhóm 2
+        # Radio buttons
         self.astar_radio = QRadioButton("A* Search")
         self.idastar_radio = QRadioButton("IDA* Search")
         self.greedy_radio = QRadioButton("Greedy Best-First Search")
+        self.pdb_astar_radio = QRadioButton("Pattern Database A* Search")
         
         # Thêm vào button group
         self.algorithm_button_group.addButton(self.astar_radio, 4)
         self.algorithm_button_group.addButton(self.idastar_radio, 5)
         self.algorithm_button_group.addButton(self.greedy_radio, 6)
+        self.algorithm_button_group.addButton(self.pdb_astar_radio, 9)
         
         # Thêm vào layout
         informed_layout.addWidget(self.astar_radio)
         informed_layout.addWidget(self.idastar_radio)
         informed_layout.addWidget(self.greedy_radio)
-        informed_group.setLayout(informed_layout)
+        informed_layout.addWidget(self.pdb_astar_radio)
+        informed_layout.addStretch()
         
-        # Nhóm 3: Tìm kiếm cục bộ (Local Search)
-        local_group = QGroupBox("Tìm kiếm cục bộ\n(Local Search)")
-        local_layout = QVBoxLayout()
+        # --- Tab 3: Thuật toán tìm kiếm cục bộ ---
+        local_tab = QWidget()
+        local_layout = QVBoxLayout(local_tab)
         
-        # Tạo các radio buttons cho nhóm 3
+        # Radio buttons
         self.hill_climbing_max_radio = QRadioButton("Hill Climbing Max")
         self.hill_climbing_random_radio = QRadioButton("Hill Climbing Random")
-        
-        # Thêm vào button group
-        self.algorithm_button_group.addButton(self.hill_climbing_max_radio, 7)
-        self.algorithm_button_group.addButton(self.hill_climbing_random_radio, 8)
-        
-        # Thêm vào layout
-        local_layout.addWidget(self.hill_climbing_max_radio)
-        local_layout.addWidget(self.hill_climbing_random_radio)
-        local_group.setLayout(local_layout)
-        
-        # Nhóm 4: Pattern Database
-        pattern_db_group = QGroupBox("Pattern Database")
-        pattern_db_layout = QVBoxLayout()
-        
-        # Tạo các radio buttons cho nhóm pattern database
-        self.pdb_astar_radio = QRadioButton("Pattern Database A* Search")
-        
-        # Thêm vào button group
-        self.algorithm_button_group.addButton(self.pdb_astar_radio, 9)
-        
-        # Thêm vào layout
-        pattern_db_layout.addWidget(self.pdb_astar_radio)
-        pattern_db_group.setLayout(pattern_db_layout)
-        
-        # Nhóm 5: Reinforcement Learning
-        rl_group = QGroupBox("RL (Học tăng cường)")
-        rl_layout = QVBoxLayout()
-        
-        # Tạo các radio buttons cho nhóm RL
-        self.rl_dqn_radio = QRadioButton("Deep Q-Network")
-        
-        # Thêm vào button group
-        self.algorithm_button_group.addButton(self.rl_dqn_radio, 10)
-        
-        # Thêm vào layout
-        rl_layout.addWidget(self.rl_dqn_radio)
-        rl_group.setLayout(rl_layout)
-        
-        # Thêm các nhóm vào grid layout (2 hàng, 3 cột)
-        algo_grid.addWidget(uninformed_group, 0, 0)
-        algo_grid.addWidget(informed_group, 0, 1)
-        algo_grid.addWidget(local_group, 0, 2)
-        algo_grid.addWidget(pattern_db_group, 1, 0)
-        algo_grid.addWidget(rl_group, 1, 1)
-        
-        # Thêm các thuật toán mới theo yêu cầu
-        
-        # Cập nhật nhóm Tìm kiếm cục bộ (Local Search) với 3 thuật toán mới
-        # Thêm các thuật toán mới vào nhóm Local Search
         self.simulated_annealing_radio = QRadioButton("Simulated Annealing")
         self.genetic_algorithm_radio = QRadioButton("Genetic Algorithm")
         self.local_beam_search_radio = QRadioButton("Local Beam Search")
         
         # Thêm vào button group
+        self.algorithm_button_group.addButton(self.hill_climbing_max_radio, 7)
+        self.algorithm_button_group.addButton(self.hill_climbing_random_radio, 8)
         self.algorithm_button_group.addButton(self.simulated_annealing_radio, 11)
         self.algorithm_button_group.addButton(self.genetic_algorithm_radio, 12)
         self.algorithm_button_group.addButton(self.local_beam_search_radio, 13)
         
         # Thêm vào layout
+        local_layout.addWidget(self.hill_climbing_max_radio)
+        local_layout.addWidget(self.hill_climbing_random_radio)
         local_layout.addWidget(self.simulated_annealing_radio)
         local_layout.addWidget(self.genetic_algorithm_radio)
         local_layout.addWidget(self.local_beam_search_radio)
+        local_layout.addStretch()
         
-        # Thêm nhóm Tìm kiếm trong môi trường phức tạp
-        complex_env_group = QGroupBox("Tìm kiếm trong môi trường phức tạp")
-        complex_env_layout = QVBoxLayout()
+        # --- Tab 4: Tìm kiếm trong môi trường phức tạp ---
+        complex_tab = QWidget()
+        complex_layout = QVBoxLayout(complex_tab)
         
-        # Tạo các radio buttons cho nhóm tìm kiếm môi trường phức tạp
+        # Radio buttons
         self.and_or_search_radio = QRadioButton("AND-OR Graph Search")
         self.belief_states_radio = QRadioButton("Belief States")
         
@@ -366,62 +265,126 @@ class ControlsWidget(QWidget):
         self.algorithm_button_group.addButton(self.belief_states_radio, 15)
         
         # Thêm vào layout
-        complex_env_layout.addWidget(self.and_or_search_radio)
-        complex_env_layout.addWidget(self.belief_states_radio)
-        complex_env_group.setLayout(complex_env_layout)
+        complex_layout.addWidget(self.and_or_search_radio)
+        complex_layout.addWidget(self.belief_states_radio)
+        complex_layout.addStretch()
         
-        # Thêm nhóm CSP (Constraint Satisfaction Problem)
-        csp_group = QGroupBox("Bài toán thoả mãn ràng buộc (CSP)")
-        csp_layout = QVBoxLayout()
+        # --- Tab 5: RL (Reinforcement Learning) ---
+        rl_tab = QWidget()
+        rl_layout = QVBoxLayout(rl_tab)
         
-        # Tạo các radio buttons cho nhóm CSP
-        self.ac3_radio = QRadioButton("AC-3 (Arc Consistency Algorithm 3)")
-        self.backtracking_1_radio = QRadioButton("Backtracking Search (Gán giá trị từng biến)")
-        self.backtracking_2_radio = QRadioButton("Backtracking Search (Kiểm tra ràng buộc sớm)")
+        # Radio buttons
+        self.rl_dqn_radio = QRadioButton("Deep Q-Network (DQN)")
         
         # Thêm vào button group
-        self.algorithm_button_group.addButton(self.ac3_radio, 16)
-        self.algorithm_button_group.addButton(self.backtracking_1_radio, 17)
-        self.algorithm_button_group.addButton(self.backtracking_2_radio, 18)
+        self.algorithm_button_group.addButton(self.rl_dqn_radio, 10)
         
         # Thêm vào layout
-        csp_layout.addWidget(self.ac3_radio)
-        csp_layout.addWidget(self.backtracking_1_radio)
-        csp_layout.addWidget(self.backtracking_2_radio)
-        csp_group.setLayout(csp_layout)
+        rl_layout.addWidget(self.rl_dqn_radio)
+        rl_layout.addStretch()
         
-        # Thêm các nhóm mới vào grid layout
-        algo_grid.addWidget(complex_env_group, 1, 2)
-        algo_grid.addWidget(csp_group, 2, 0, 1, 2)  # Span 2 cột
+        # Thêm các tab vào tabwidget
+        algo_tabs.addTab(uninformed_tab, "Không thông tin")
+        algo_tabs.addTab(informed_tab, "Có thông tin")
+        algo_tabs.addTab(local_tab, "Tìm kiếm cục bộ")
+        algo_tabs.addTab(complex_tab, "Môi trường phức tạp")
+        algo_tabs.addTab(rl_tab, "RL (Học tăng cường)")
         
-        algo_layout.addLayout(algo_grid)
-        
-        # Thêm options cho các thuật toán
-        options_layout = QHBoxLayout()
-        options_layout.addWidget(QLabel("Giới hạn thời gian (giây):"))
+        # Cài đặt thời gian
+        time_layout = QHBoxLayout()
+        time_layout.addWidget(QLabel("Giới hạn thời gian (giây):"))
         self.time_limit_spin = QSpinBox()
         self.time_limit_spin.setRange(1, 300)
         self.time_limit_spin.setValue(120)
-        options_layout.addWidget(self.time_limit_spin)
-        options_layout.addStretch()
+        time_layout.addWidget(self.time_limit_spin)
+        time_layout.addStretch()
         
         # Nút giải Rubik
         solve_btn = QPushButton("Giải Rubik")
         solve_btn.clicked.connect(self.solve_rubik)
-        options_layout.addWidget(solve_btn)
+        time_layout.addWidget(solve_btn)
         
-        algo_layout.addLayout(options_layout)
+        # Thêm vào layout dưới
+        bottom_layout.addWidget(algo_tabs)
+        bottom_layout.addLayout(time_layout)
         
-        # Thêm các phần chính vào main_layout với tỷ lệ 1:1
-        splitter = QSplitter(Qt.Vertical)
-        splitter.addWidget(top_widget)
-        splitter.addWidget(algo_widget)
+        # === KẾT QUẢ GIẢI ===
+        result_group = QGroupBox("Kết quả giải")
+        result_layout = QVBoxLayout()
         
-        # Cài đặt tỷ lệ ban đầu 1:1 (50:50)
-        splitter.setSizes([500, 500])
+        # Hiển thị trạng thái giải
+        status_layout = QHBoxLayout()
+        status_layout.addWidget(QLabel("Trạng thái:"))
+        self.solution_status = QLabel("Sẵn sàng")
+        self.solution_status.setStyleSheet("font-weight: bold;")
+        status_layout.addWidget(self.solution_status)
+        result_layout.addLayout(status_layout)
         
-        # Thêm splitter vào layout chính
-        main_layout.addWidget(splitter)
+        # Thống kê cơ bản
+        stats_layout = QGridLayout()
+        stats_layout.addWidget(QLabel("Thời gian:"), 0, 0)
+        self.solution_time = QLabel("0 giây")
+        stats_layout.addWidget(self.solution_time, 0, 1)
+        
+        stats_layout.addWidget(QLabel("Số nút đã duyệt:"), 0, 2)
+        self.nodes_visited = QLabel("0")
+        stats_layout.addWidget(self.nodes_visited, 0, 3)
+        
+        stats_layout.addWidget(QLabel("Độ dài lời giải:"), 1, 0)
+        self.solution_length = QLabel("0")
+        stats_layout.addWidget(self.solution_length, 1, 1)
+        
+        stats_layout.addWidget(QLabel("Bộ nhớ sử dụng:"), 1, 2)
+        self.memory_usage = QLabel("0 trạng thái")
+        stats_layout.addWidget(self.memory_usage, 1, 3)
+        
+        stats_layout.addWidget(QLabel("Hệ số phân nhánh:"), 2, 0)
+        self.branching_factor = QLabel("0")
+        stats_layout.addWidget(self.branching_factor, 2, 1)
+        
+        stats_layout.addWidget(QLabel("Tỷ lệ cắt tỉa:"), 2, 2)
+        self.pruning_ratio = QLabel("0%")
+        stats_layout.addWidget(self.pruning_ratio, 2, 3)
+        
+        result_layout.addLayout(stats_layout)
+        
+        # Phân tích chi tiết tabs
+        analysis_tabs = QTabWidget()
+        
+        # Tab thống kê
+        stats_tab = QWidget()
+        stats_layout = QVBoxLayout(stats_tab)
+        self.detailed_stats = QTextEdit()
+        self.detailed_stats.setReadOnly(True)
+        stats_layout.addWidget(self.detailed_stats)
+        
+        # Tab heuristic
+        heuristic_tab = QWidget()
+        heuristic_layout = QVBoxLayout(heuristic_tab)
+        self.heuristic_stats = QTextEdit()
+        self.heuristic_stats.setReadOnly(True)
+        heuristic_layout.addWidget(self.heuristic_stats)
+        
+        # Thêm tabs
+        analysis_tabs.addTab(stats_tab, "Thống kê chi tiết")
+        analysis_tabs.addTab(heuristic_tab, "Phân tích heuristic")
+        
+        result_layout.addWidget(analysis_tabs)
+        result_group.setLayout(result_layout)
+        
+        # Thêm kết quả giải vào layout dưới
+        bottom_layout.addWidget(result_group)
+        
+        # ----- TẠO SPLITTER TỔNG THỂ ĐỂ CHIA PHẦN TRÊN VÀ DƯỚI -----
+        main_splitter = QSplitter(Qt.Vertical)
+        main_splitter.addWidget(top_splitter)
+        main_splitter.addWidget(bottom_widget)
+        
+        # Đặt tỷ lệ phân chia (40% trên, 60% dưới)
+        main_splitter.setSizes([400, 600])
+        
+        # Thêm main splitter vào layout chính
+        main_layout.addWidget(main_splitter)
         
         self.setLayout(main_layout)
         
@@ -509,10 +472,20 @@ class ControlsWidget(QWidget):
                     face = moves_str[i].upper()
                     clockwise = True
                     
-                    # Kiểm tra ký tự tiếp theo có phải là dấu ' không
-                    if i + 1 < len(moves_str) and moves_str[i + 1] == "'":
-                        clockwise = False
-                        i += 1  # Bỏ qua ký tự '
+                    # Kiểm tra ký tự tiếp theo
+                    if i + 1 < len(moves_str):
+                        # Xử lý case R'
+                        if moves_str[i + 1] == "'":
+                            clockwise = False
+                            i += 1  # Bỏ qua ký tự '
+                        # Xử lý case R2 - quay 180 độ = quay 2 lần
+                        elif moves_str[i + 1] == "2":
+                            # Thêm 2 lần quay cùng hướng
+                            moves.append((face, clockwise))
+                            moves.append((face, clockwise))
+                            i += 1  # Bỏ qua số 2
+                            i += 1  # Đi tiếp
+                            continue
                     
                     moves.append((face, clockwise))
                 i += 1
@@ -525,14 +498,21 @@ class ControlsWidget(QWidget):
                     continue
                     
                 face = token[0].upper()
-                clockwise = True
                 
-                if len(token) > 1:
-                    if token[1] == "'":
-                        clockwise = False
-                        
-                if face in 'FLUDRB':
-                    moves.append((face, clockwise))
+                if face not in 'FLUDRB':
+                    continue
+                    
+                # Xử lý case R2
+                if len(token) > 1 and token[1] == "2":
+                    # Thêm 2 lần quay cùng chiều
+                    moves.append((face, True))
+                    moves.append((face, True))
+                # Xử lý case R'
+                elif len(token) > 1 and token[1] == "'":
+                    moves.append((face, False))
+                # Xử lý case R
+                else:
+                    moves.append((face, True))
                     
         return moves
     
@@ -568,25 +548,28 @@ class ControlsWidget(QWidget):
             return
             
         # Sinh ngẫu nhiên 20 nước đi
-        moves = []
-        num_moves = 20
         available_moves = ["U", "D", "F", "B", "L", "R"]
         variants = ["", "'", "2"]
         
-        for _ in range(num_moves):
+        # Tạo chuỗi nước đi
+        move_strings = []
+        for _ in range(20):
             move = random.choice(available_moves)
             variant = random.choice(variants)
-            moves.append(move + variant)
-            
-        # Áp dụng các nước đi
+            move_strings.append(move + variant)
+        
+        # Tạo chuỗi để hiển thị
+        display_moves_str = " ".join(move_strings)
+        
+        # Parse và áp dụng nước đi
+        moves = self.parse_moves(display_moves_str)
         self.apply_moves_to_3d_cube(moves)
         
         # Cập nhật hiển thị trạng thái
         self.update_state_display()
         
         # Thông báo
-        moves_str = " ".join(moves)
-        self.solution_status.setText(f"Đã xáo trộn: {moves_str}")
+        self.solution_status.setText(f"Đã xáo trộn: {display_moves_str}")
     
     def get_current_state(self):
         """Lấy trạng thái hiện tại của Rubik để sử dụng cho thuật toán giải"""
