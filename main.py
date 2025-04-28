@@ -4,6 +4,7 @@ from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from rubik_widget import RubikWidget, RubikWidget2x2
 from controls_widget import ControlsWidget
+from csp_widget import CSPWidget
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -37,13 +38,9 @@ class MainWindow(QMainWindow):
         # Tab cho CSP
         tab_csp = QWidget()
         layout_csp = QVBoxLayout()
-        # Label tạm thời
-        csp_label = QLabel("CSP (Constraint Satisfaction Problem) sẽ được triển khai sau")
-        csp_label.setAlignment(Qt.AlignCenter)
-        font = QFont()
-        font.setPointSize(14)
-        csp_label.setFont(font)
-        layout_csp.addWidget(csp_label)
+        # Thay label tạm thời bằng CSP widget mới
+        self.csp_widget = CSPWidget()
+        layout_csp.addWidget(self.csp_widget)
         tab_csp.setLayout(layout_csp)
         
         # Thêm các tab vào tab widget

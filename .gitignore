@@ -5,7 +5,7 @@ __pycache__/
 .DS_Store
 # C extensions
 *.so
-test.py
+# test.
 deepcubea_model.pth
 # Distribution / packaging
 .Python
