@@ -10,20 +10,26 @@ from RubikState.rubik_chen import RubikState, MOVES_3x3, SOLVED_STATE_3x3, MOVE_
 import os
 import pickle
 
-# Constants - Optimized for M2 chip
-DEVICE = torch.device("mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu")
-BATCH_SIZE = 512  # Reduced batch size for better learning
-REPLAY_BUFFER_SIZE = 1000000  # 1M buffer size
+# Constants - Optimized for CPU
+DEVICE = torch.device("cpu")  # Force CPU usage
+BATCH_SIZE = 2048  # Increased batch size for better learning
+REPLAY_BUFFER_SIZE = 5000000  # 5M buffer size
 NUM_SCRAMBLES = 50
 NUM_AVI_ITERATIONS = 50000
-LEARNING_RATE = 0.001  # Increased from 0.0005 to 0.001
+LEARNING_RATE = 0.0005  # Decreased from 0.001 to 0.0005 for more stable learning
 EPSILON = 0.05
 GAMMA = 0.99
-W_HEUR = 0.95
+W_HEUR = 1.0  # Changed from 3 to 1.0 for optimal A* heuristic utilization
 MAX_NODES_EXPAND = 100000
 TRAINING_SAMPLES_PER_ITER = 20000
-VALIDATION_INTERVAL = 1000  # Increased validation frequency
-CHECKPOINT_INTERVAL = 500   # More frequent checkpoints
+VALIDATION_INTERVAL = 1000
+CHECKPOINT_INTERVAL = 500
+
+# LR Scheduler parameters
+USE_LR_SCHEDULER = True
+LR_SCHEDULER_PATIENCE = 5
+LR_SCHEDULER_FACTOR = 0.5
+MIN_LR = 0.00001
 
 # Advanced training parameters
 MIN_SCRAMBLE_DEPTH = 1
@@ -34,14 +40,20 @@ USE_DATA_AUGMENTATION = False  # Disabled for speed
 VALIDATION_SCRAMBLES = [3, 5, 8, 10]  # Modified validation depths
 
 # Performance optimization for M2
-NUM_WORKERS = 0  # Disabled multiprocessing on M2
-PIN_MEMORY = False  # Disabled for M2
+NUM_WORKERS = 7  # Enabled multiprocessing on CPU
+PIN_MEMORY = False  # Disable for CPU usage
 
 # Adaptive training parameters
-BASE_ITERS_PER_DEPTH = 300  # Increased from 100 to 300 for more thorough training
-ITERS_INCREMENT = 100       # Increased from 50 to 100 for more iterations as depth increases
-MIN_SUCCESS_RATE = 0.95     # Giảm từ 0.98 xuống 0.95 để tránh lặp lại vì scramble ngẫu nhiên
-VALIDATION_SIZE = 30        # Increased from 20 to 30 for better validation
+BASE_ITERS_PER_DEPTH = 1000  # Increased from 700 to 1000 for more thorough training at each depth
+ITERS_INCREMENT = 300       # Increased to 300 for more iterations as depth increases
+MIN_SUCCESS_RATE = 0.95     # Slightly reduced from 0.98 to 0.95 to avoid excessive training
+VALIDATION_SIZE = 50        # Increased from 30 to 50 for more reliable validation
+
+# PER parameters
+USE_PRIORITIZED_REPLAY = True
+PER_ALPHA = 0.6  # Priority exponent
+PER_BETA = 0.4   # Initial importance sampling weight
+PER_BETA_INCREMENT = 0.001  # Beta increment per sampling
 
 # Training parameters
 CHECKPOINT_DIR = "train_checkpoints"
@@ -234,20 +246,37 @@ class StateEncoder:
             batch = [self.encode(state) for state in states]
             return torch.stack(batch)
 
-# Replay buffer for storing experience
+# Replay buffer for storing experience with Prioritized Experience Replay
 class SmartReplayBuffer:
     def __init__(self, capacity):
         self.capacity = capacity
         self.buffer = {}  # Dictionary of deques for each depth
         self.depth_losses = {}  # Track average loss for each depth
         self.min_losses = {}  # Track minimum loss for each depth
+        
+        # PER attributes
+        self.use_per = USE_PRIORITIZED_REPLAY
+        self.priorities = {}  # Dictionary of priorities for each depth
+        self.alpha = PER_ALPHA
+        self.beta = PER_BETA
+        self.beta_increment = PER_BETA_INCREMENT
+        self.max_priority = 1.0
     
     def add(self, state, value, depth, loss=None):
         if depth not in self.buffer:
             self.buffer[depth] = deque(maxlen=self.capacity)
             self.depth_losses[depth] = []
+            if self.use_per:
+                self.priorities[depth] = []
         
         self.buffer[depth].append((state, value))
+        
+        if self.use_per:
+            # Add max priority for new experience
+            self.priorities[depth].append(self.max_priority)
+            # Keep priorities length same as buffer length
+            if len(self.priorities[depth]) > len(self.buffer[depth]):
+                self.priorities[depth].pop(0)
         
         if loss is not None:
             self.depth_losses[depth].append(loss)
@@ -276,48 +305,155 @@ class SmartReplayBuffer:
         return max(0, 1 - (current_avg_loss / max(0.1, min_loss)))
     
     def sample_smart(self, batch_size, current_depth):
-        """Smart sampling based on depth mastery"""
+        """Smart sampling based on depth mastery and priorities if PER is enabled"""
         batch = []
+        weights = None  # For importance sampling weights
+        indices_map = None  # To track which indices were sampled
         
         # Calculate mastery levels for all previous depths
         mastery_levels = {d: self.get_depth_mastery(d) for d in range(1, current_depth + 1)}
         
         if current_depth == 1:
-            current_states = list(self.buffer[current_depth])
-            return random.sample(current_states, min(batch_size, len(current_states))), mastery_levels
+            if self.use_per and self.priorities.get(1, []):
+                # Sample using priorities
+                probs = np.array(self.priorities[1]) ** self.alpha
+                probs /= probs.sum()
+                
+                indices = np.random.choice(
+                    len(self.buffer[1]), 
+                    min(batch_size, len(self.buffer[1])), 
+                    replace=False, 
+                    p=probs
+                )
+                
+                batch = [self.buffer[1][i] for i in indices]
+                
+                # Calculate importance sampling weights
+                weights = (len(self.buffer[1]) * probs[indices]) ** (-self.beta)
+                weights /= weights.max()  # Normalize weights
+                
+                # Update beta
+                self.beta = min(1.0, self.beta + self.beta_increment)
+                
+                # Store indices for priority updates
+                indices_map = {i: idx for i, idx in enumerate(indices)}
+            else:
+                # Regular sampling
+                current_states = list(self.buffer[current_depth])
+                batch = random.sample(current_states, min(batch_size, len(current_states)))
+            
+            return batch, mastery_levels, weights, indices_map
         
-        # Fully mastered depths (mastery > 0.99)
+        # Depth distribution similar to before but with PER within each depth
+        depth_allocation = {}
+        
+        # Mastered depths (mastery > 0.99)
         mastered_depths = [d for d, m in mastery_levels.items() if m > 0.99]
         partially_mastered = [d for d, m in mastery_levels.items() if 0 < m <= 0.99]
         
-        # Sample based on mastery
+        # 30% from mastered depths
         if mastered_depths:
-            mastered_samples = int(batch_size * 0.4)
-            for _ in range(mastered_samples):
-                depth = random.choice(mastered_depths)
-                if depth in self.buffer and self.buffer[depth]:
-                    batch.append(random.choice(self.buffer[depth]))
+            samples_per_depth = int(batch_size * 0.3) // len(mastered_depths)
+            for depth in mastered_depths:
+                depth_allocation[depth] = samples_per_depth
         
+        # 30% from partially mastered depths
         if partially_mastered:
-            weights = [mastery_levels[d] for d in partially_mastered]
-            partial_samples = int(batch_size * 0.2)
-            for _ in range(partial_samples):
-                depth = random.choices(partially_mastered, weights=weights)[0]
-                if depth in self.buffer and self.buffer[depth]:
-                    batch.append(random.choice(self.buffer[depth]))
+            weights_list = [mastery_levels[d] for d in partially_mastered]
+            total_weight = sum(weights_list)
+            partial_samples = int(batch_size * 0.3)
+            
+            for i, depth in enumerate(partially_mastered):
+                if total_weight > 0:
+                    depth_allocation[depth] = int(partial_samples * (weights_list[i] / total_weight))
+                else:
+                    depth_allocation[depth] = partial_samples // len(partially_mastered)
         
-        remaining = batch_size - len(batch)
-        if remaining > 0 and current_depth in self.buffer:
-            current_states = list(self.buffer[current_depth])
-            if current_states:
-                batch.extend(random.sample(current_states, min(remaining, len(current_states))))
+        # 20% from all previous depths
+        all_prev_depths = list(range(1, current_depth))
+        if all_prev_depths:
+            prev_samples = int(batch_size * 0.2)
+            samples_per_depth = prev_samples // len(all_prev_depths)
+            for depth in all_prev_depths:
+                depth_allocation[depth] = depth_allocation.get(depth, 0) + samples_per_depth
         
+        # 20% from current depth
+        depth_allocation[current_depth] = int(batch_size * 0.2)
+        
+        # Sample from each depth with prioritization if PER is enabled
+        all_weights = []
+        all_indices_map = {}
+        samples_so_far = 0
+        
+        for depth, num_samples in depth_allocation.items():
+            if depth not in self.buffer or not self.buffer[depth]:
+                continue
+                
+            if self.use_per and depth in self.priorities and self.priorities[depth]:
+                # Use PER for this depth
+                probs = np.array(self.priorities[depth]) ** self.alpha
+                probs /= probs.sum()
+                
+                indices = np.random.choice(
+                    len(self.buffer[depth]), 
+                    min(num_samples, len(self.buffer[depth])), 
+                    replace=False, 
+                    p=probs
+                )
+                
+                depth_batch = [self.buffer[depth][i] for i in indices]
+                batch.extend(depth_batch)
+                
+                # Calculate importance sampling weights
+                depth_weights = (len(self.buffer[depth]) * probs[indices]) ** (-self.beta)
+                all_weights.extend(depth_weights)
+                
+                # Store indices for priority updates
+                for i, idx in enumerate(indices):
+                    all_indices_map[samples_so_far + i] = (depth, idx)
+                
+                samples_so_far += len(depth_batch)
+            else:
+                # Regular sampling for this depth
+                depth_batch = random.sample(
+                    list(self.buffer[depth]), 
+                    min(num_samples, len(self.buffer[depth]))
+                )
+                batch.extend(depth_batch)
+                samples_so_far += len(depth_batch)
+        
+        # Fill remaining slots if needed
         while len(batch) < batch_size:
             depth = random.randint(1, current_depth)
             if depth in self.buffer and self.buffer[depth]:
                 batch.append(random.choice(self.buffer[depth]))
         
-        return batch, mastery_levels  # Return mastery levels for monitoring
+        # Update beta for next time
+        self.beta = min(1.0, self.beta + self.beta_increment)
+        
+        # Normalize weights if we have them
+        if all_weights:
+            weights = np.array(all_weights)
+            weights /= weights.max()  # Normalize weights
+        
+        return batch[:batch_size], mastery_levels, weights, all_indices_map
+    
+    def update_priorities(self, indices_map, losses):
+        """Update priorities based on TD errors/losses"""
+        if not self.use_per or indices_map is None:
+            return
+            
+        for i, loss in enumerate(losses):
+            if i in indices_map:
+                if isinstance(indices_map[i], tuple):
+                    # For multi-depth sampling
+                    depth, idx = indices_map[i]
+                    self.priorities[depth][idx] = min(loss + 1e-5, self.max_priority)  # Add small constant to avoid zero priority
+                    self.max_priority = max(self.max_priority, self.priorities[depth][idx])
+                else:
+                    # For single depth sampling
+                    self.priorities[1][indices_map[i]] = min(loss + 1e-5, self.max_priority)
+                    self.max_priority = max(self.max_priority, self.priorities[1][indices_map[i]])
     
     def __len__(self):
         return sum(len(buffer) for buffer in self.buffer.values())
@@ -405,7 +541,20 @@ class DeepCubeASolver:
             self.model = DeepCubeA().to(DEVICE)
         
         self.optimizer = optim.Adam(self.model.parameters(), lr=LEARNING_RATE)
-        self.criterion = nn.MSELoss()
+        
+        # Add LR scheduler
+        self.use_lr_scheduler = USE_LR_SCHEDULER
+        if self.use_lr_scheduler:
+            self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+                self.optimizer, 
+                mode='min', 
+                factor=LR_SCHEDULER_FACTOR,
+                patience=LR_SCHEDULER_PATIENCE,
+                min_lr=MIN_LR,
+                verbose=True
+            )
+        
+        self.criterion = nn.MSELoss(reduction='none')  # Changed to 'none' for PER
         self.encoder = StateEncoder(use_branched=use_branched)
         self.replay_buffer = SmartReplayBuffer(REPLAY_BUFFER_SIZE)
         
@@ -448,7 +597,7 @@ class DeepCubeASolver:
             return
         
         self.model.train()
-        batch = self.replay_buffer.sample_smart(batch_size, 1)
+        batch, mastery_levels, weights, indices_map = self.replay_buffer.sample_smart(batch_size, 1)
         states, values = zip(*batch)
         
         # Forward pass
@@ -459,38 +608,38 @@ class DeepCubeASolver:
             inputs = self.encoder.encode_batch(states)
             predictions = self.model(inputs).squeeze()
         
-        # Backward pass
+        # Backward pass with importance sampling weights if PER is used
         target_values = torch.FloatTensor(values).to(DEVICE)
-        loss = self.criterion(predictions, target_values)
+        
+        # Element-wise loss for each sample
+        element_losses = self.criterion(predictions, target_values)
+        
+        if weights is not None:
+            # Apply importance sampling weights for PER
+            weights_tensor = torch.FloatTensor(weights).to(DEVICE)
+            # Ensure weights and losses have same size
+            if len(weights_tensor) != len(element_losses):
+                # Resize weights or truncate losses to match
+                min_size = min(len(weights_tensor), len(element_losses))
+                weights_tensor = weights_tensor[:min_size]
+                element_losses = element_losses[:min_size]
+            loss = (element_losses * weights_tensor).mean()
+        else:
+            loss = element_losses.mean()
         
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
         
+        # Update priorities in the replay buffer if using PER
+        if USE_PRIORITIZED_REPLAY and indices_map:
+            sample_losses = element_losses.detach().cpu().numpy()
+            self.replay_buffer.update_priorities(indices_map, sample_losses)
+        
         return loss.item()
-    
-    def generate_training_patterns(self):
-        """Generate common Rubik's cube patterns for training"""
-        patterns = []
-        
-        # Basic patterns
-        patterns.extend([
-            ["R", "U", "R'", "U'"],  # Sexy Move
-            ["R", "U", "R'", "U", "R", "U", "U", "R'"],  # Sune
-            ["F", "R", "U", "R'", "U'", "F'"],  # OLL case
-            ["R", "U", "R'", "U'", "R'", "F", "R", "F'"],  # Another OLL
-        ])
-        
-        # T-perm
-        patterns.append(["R", "U", "R'", "U'", "R'", "F", "R", "R", "U'", "R'", "U'", "R", "U", "R'", "F'"])
-        
-        # Y-perm
-        patterns.append(["F", "R", "U'", "R'", "U'", "R", "U", "R'", "F'", "R", "U", "R'", "U'", "R'", "F", "R", "F'"])
-        
-        return patterns
 
     def train_avi(self, num_iterations, start_iteration=0, start_scramble_depth=1):
-        """Enhanced training with mastery-based experience replay"""
+        """Enhanced training with mastery-based experience replay and LR scheduling"""
         print(f"Training on {DEVICE} | Batch: {BATCH_SIZE} | LR: {LEARNING_RATE}")
         
         self.model = self.model.to(DEVICE)
@@ -517,10 +666,11 @@ class DeepCubeASolver:
             
             depth_start_time = time.time()
             depth_losses = []
+            depth_epoch_losses = []  # For LR scheduler
             
             for iteration in range(required_iters):
                 # Training step
-                batch, mastery_levels = self.replay_buffer.sample_smart(BATCH_SIZE, current_depth)
+                batch, mastery_levels, weights, indices_map = self.replay_buffer.sample_smart(BATCH_SIZE, current_depth)
                 states, values = zip(*batch)
                 
                 # Print mastery levels periodically
@@ -531,6 +681,11 @@ class DeepCubeASolver:
                         if m > 0.5:  # Only show significant mastery
                             print(f"D{d}:{m*100:.1f}%", end=" ")
                     print()
+                    
+                    # Also print current learning rate
+                    for param_group in self.optimizer.param_groups:
+                        print(f"Current LR: {param_group['lr']:.7f}")
+                    
                     last_mastery_time = current_time
                 
                 self.optimizer.zero_grad()
@@ -543,12 +698,34 @@ class DeepCubeASolver:
                     predictions = self.model(inputs).squeeze()
                 
                 target_values = torch.FloatTensor(values).to(DEVICE)
-                loss = self.criterion(predictions, target_values)
+                
+                # Element-wise loss for each sample
+                element_losses = self.criterion(predictions, target_values)
+                
+                if weights is not None:
+                    # Apply importance sampling weights for PER
+                    weights_tensor = torch.FloatTensor(weights).to(DEVICE)
+                    # Ensure weights and losses have same size
+                    if len(weights_tensor) != len(element_losses):
+                        # Resize weights or truncate losses to match
+                        min_size = min(len(weights_tensor), len(element_losses))
+                        weights_tensor = weights_tensor[:min_size]
+                        element_losses = element_losses[:min_size]
+                    loss = (element_losses * weights_tensor).mean()
+                else:
+                    loss = element_losses.mean()
+                
                 loss.backward()
                 self.optimizer.step()
                 
+                # Update priorities in replay buffer if using PER
+                if USE_PRIORITIZED_REPLAY and indices_map:
+                    sample_losses = element_losses.detach().cpu().numpy()
+                    self.replay_buffer.update_priorities(indices_map, sample_losses)
+                
                 current_loss = loss.item()
                 depth_losses.append(current_loss)
+                depth_epoch_losses.append(current_loss)
                 
                 # Generate new experiences less frequently
                 if iteration % 20 == 0:
@@ -575,6 +752,12 @@ class DeepCubeASolver:
                 
                 if current_loss < best_loss:
                     best_loss = current_loss
+                
+                # Apply LR scheduler every 100 iterations
+                if self.use_lr_scheduler and iteration % 100 == 99:
+                    avg_epoch_loss = np.mean(depth_epoch_losses)
+                    self.scheduler.step(avg_epoch_loss)
+                    depth_epoch_losses = []  # Reset for next epoch
                 
                 # Print progress less frequently (time-based)
                 current_time = time.time()
