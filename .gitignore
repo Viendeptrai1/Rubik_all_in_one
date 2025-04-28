@@ -6,6 +6,7 @@ __pycache__/
 # C extensions
 *.so
 test.py
+deepcubea_model.pth
 # Distribution / packaging
 .Python
 build/
