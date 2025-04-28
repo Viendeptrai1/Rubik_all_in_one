@@ -462,6 +462,7 @@ def ucs_search_2x2(start_state, goal_state=None, moves_dict=None, time_limit=30,
                 stats['pruned_nodes'] += 1
     
     end_time = time.time()
+    
     if return_stats:
         # Tính hệ số phân nhánh hiệu quả
         if nodes_visited > 0:
@@ -1456,285 +1457,246 @@ def test_scramble_2x2(scramble_moves, algorithm="a_star", time_limit=30):
         print(f"Nodes explored: {nodes}")
         return False
 
-def simulated_annealing_search_2x2(start_state, goal_state=None, moves_dict=None, time_limit=30, max_iterations=1000, initial_temp=100, cooling_rate=0.95, return_stats=False):
+def simulated_annealing_search_2x2(start_state, goal_state=None, moves_dict=None, time_limit=30, max_iterations=1000, initial_temp=100, cooling_rate=0.95, restarts=5, return_stats=False):
     """
-    Simulated Annealing search algorithm for 2x2 Rubik's cube
-    
-    Args:
-        start_state: Starting state (Rubik2x2State)
-        goal_state: Goal state (default is SOLVED_STATE_2x2)
-        moves_dict: Dictionary of moves (default is MOVES_2x2)
-        time_limit: Time limit in seconds (default is 30)
-        max_iterations: Maximum number of iterations (default is 1000)
-        initial_temp: Initial temperature (default is 100)
-        cooling_rate: Rate at which temperature decreases (default is 0.95)
-        return_stats: Whether to return detailed statistics (default is False)
-    
-    Returns:
-        tuple: (path, nodes_visited, time_taken) or (path, nodes_visited, time_taken, stats)
+    Simulated Annealing search algorithm for 2x2 Rubik's cube (cải tiến: random restart)
     """
-    # Set defaults if not provided
     goal_state = goal_state or SOLVED_STATE_2x2
     moves_dict = moves_dict or MOVES_2x2
-    
-    # Get list of move names
     move_names = list(moves_dict.keys())
-    
-    # Count visited nodes
     nodes_visited = 0
-    
-    # Thêm thống kê
-    if return_stats:
-        stats = {
-            'memory_used': 1,              # Số lượng trạng thái được lưu trong bộ nhớ
-            'total_generated': 0,           # Tổng số trạng thái được tạo ra
-            'accepted_worse': 0,            # Số lần chấp nhận trạng thái tệ hơn
-            'temperature_curve': [],        # Đường cong nhiệt độ
-            'best_h_values': [],            # Giá trị heuristic tốt nhất theo thời gian
-            'current_h_values': [],         # Giá trị heuristic hiện tại theo thời gian
-        }
-
-    # TODO: Implement Simulated Annealing algorithm
-    # Current implementation is just a placeholder
-
+    best_overall_path = None
+    best_overall_h = float('inf')
+    best_overall_time = 0
+    best_overall_stats = None
     start_time = time.time()
-    current_state = start_state
-    current_path = []
-    current_h = heuristic_2x2(current_state)
-    best_state = current_state
-    best_path = current_path
-    best_h = current_h
-    
-    temperature = initial_temp
-    iteration = 0
-    
-    while time.time() - start_time < time_limit and iteration < max_iterations and best_h > 0:
-        # Choose a random move
-        move = random.choice(move_names)
-        new_state = current_state.apply_move(move, moves_dict)
-        nodes_visited += 1
-        new_h = heuristic_2x2(new_state)
-        
+    for restart in range(restarts):
+        current_state = start_state
+        current_path = []
+        current_h = heuristic_2x2(current_state)
+        best_state = current_state
+        best_path = current_path
+        best_h = current_h
+        temperature = initial_temp
+        iteration = 0
         if return_stats:
-            stats['total_generated'] += 1
-        
-        # Calculate energy/cost change
-        delta_h = new_h - current_h
-        
-        # Accept if better, or with some probability if worse
-        if delta_h <= 0 or random.random() < math.exp(-delta_h / temperature):
-            current_state = new_state
-            current_path.append(move)
-            current_h = new_h
-            
-            if return_stats and delta_h > 0:
-                stats['accepted_worse'] += 1
-        
-        # Update best solution if found better
-        if current_h < best_h:
-            best_state = current_state
-            best_path = list(current_path)
-            best_h = current_h
-        
-        # Cool down
-        temperature *= cooling_rate
-        iteration += 1
-        
-        if return_stats:
-            stats['temperature_curve'].append(temperature)
-            stats['best_h_values'].append(best_h)
-            stats['current_h_values'].append(current_h)
-    
-    end_time = time.time()
-    
-    # If we found the goal state
-    if best_state == goal_state:
-        if return_stats:
-            return best_path, nodes_visited, end_time - start_time, stats
-        return best_path, nodes_visited, end_time - start_time
-    
-    # No solution found
+            stats = {
+                'memory_used': 1,
+                'total_generated': 0,
+                'accepted_worse': 0,
+                'temperature_curve': [],
+                'best_h_values': [],
+                'current_h_values': [],
+                'restart': restart
+            }
+        while time.time() - start_time < time_limit and iteration < max_iterations and best_h > 0:
+            move = random.choice(move_names)
+            new_state = current_state.apply_move(move, moves_dict)
+            nodes_visited += 1
+            new_h = heuristic_2x2(new_state)
+            if return_stats:
+                stats['total_generated'] += 1
+            delta_h = new_h - current_h
+            if delta_h <= 0 or random.random() < math.exp(-delta_h / max(temperature, 1e-8)):
+                current_state = new_state
+                current_path.append(move)
+                current_h = new_h
+                if return_stats and delta_h > 0:
+                    stats['accepted_worse'] += 1
+            if current_h < best_h:
+                best_state = current_state
+                best_path = list(current_path)
+                best_h = current_h
+            temperature *= cooling_rate
+            iteration += 1
+            if return_stats:
+                stats['temperature_curve'].append(temperature)
+                stats['best_h_values'].append(best_h)
+                stats['current_h_values'].append(current_h)
+            if len(current_path) > 20:  # giới hạn path
+                break
+        if best_h == 0:
+            if return_stats:
+                return best_path, nodes_visited, time.time() - start_time, stats
+            return best_path, nodes_visited, time.time() - start_time
+        if best_h < best_overall_h:
+            best_overall_h = best_h
+            best_overall_path = list(best_path)
+            best_overall_time = time.time() - start_time
+            if return_stats:
+                best_overall_stats = stats
     if return_stats:
-        return None, nodes_visited, end_time - start_time, stats
-    return None, nodes_visited, end_time - start_time
+        return None, nodes_visited, best_overall_time, best_overall_stats
+    return None, nodes_visited, best_overall_time
 
 def genetic_algorithm_search_2x2(start_state, goal_state=None, moves_dict=None, time_limit=30, population_size=100, generations=1000, mutation_rate=0.1, return_stats=False):
     """
-    Genetic Algorithm search for 2x2 Rubik's cube
-    
-    Args:
-        start_state: Starting state (Rubik2x2State)
-        goal_state: Goal state (default is SOLVED_STATE_2x2)
-        moves_dict: Dictionary of moves (default is MOVES_2x2)
-        time_limit: Time limit in seconds (default is 30)
-        population_size: Size of the population (default is 100)
-        generations: Maximum number of generations (default is 1000)
-        mutation_rate: Probability of mutation (default is 0.1)
-        return_stats: Whether to return detailed statistics (default is False)
-    
-    Returns:
-        tuple: (path, nodes_visited, time_taken) or (path, nodes_visited, time_taken, stats)
+    Genetic Algorithm search for 2x2 Rubik's cube (cài đặt đầy đủ)
     """
-    # Set defaults if not provided
     goal_state = goal_state or SOLVED_STATE_2x2
     moves_dict = moves_dict or MOVES_2x2
-    
-    # Get list of move names
     move_names = list(moves_dict.keys())
-    
-    # Count visited nodes
     nodes_visited = 0
-    
-    # Thêm thống kê
-    if return_stats:
-        stats = {
-            'memory_used': population_size,    # Số lượng trạng thái được lưu trong bộ nhớ
-            'total_generated': 0,              # Tổng số trạng thái được tạo ra
-            'best_fitness': [],                # Độ thích nghi tốt nhất theo thế hệ
-            'avg_fitness': [],                 # Độ thích nghi trung bình theo thế hệ
-            'diversity': [],                   # Đa dạng quần thể theo thế hệ
-        }
-
-    # TODO: Implement Genetic Algorithm
-    # Current implementation is just a placeholder
-    
     start_time = time.time()
-    # No solution found
+    max_path_len = 12
+    def fitness(state):
+        return heuristic_2x2(state)
+    population = []
+    for _ in range(population_size):
+        moves = [random.choice(move_names) for _ in range(random.randint(1, max_path_len))]
+        state = start_state
+        for m in moves:
+            state = state.apply_move(m, moves_dict)
+        population.append((state, moves))
+    if return_stats:
+        stats = {'memory_used': population_size, 'total_generated': population_size, 'best_fitness': [], 'avg_fitness': [], 'diversity': []}
+    for gen in range(generations):
+        if time.time() - start_time > time_limit:
+            break
+        population = sorted(population, key=lambda x: fitness(x[0]))
+        if fitness(population[0][0]) == 0:
+            if return_stats:
+                return population[0][1], nodes_visited, time.time() - start_time, stats
+            return population[0][1], nodes_visited, time.time() - start_time
+        next_gen = population[:population_size//5]  # elitism
+        while len(next_gen) < population_size:
+            p1 = random.choice(population[:population_size//2])
+            p2 = random.choice(population[:population_size//2])
+            min_len = min(len(p1[1]), len(p2[1]), max_path_len)
+            if min_len > 1:
+                cut = random.randint(1, min_len-1)
+                child_moves = p1[1][:cut] + p2[1][cut:]
+            else:
+                child_moves = list(p1[1])
+            # mutation
+            if random.random() < mutation_rate and len(child_moves) > 0:
+                idx = random.randint(0, len(child_moves)-1)
+                child_moves[idx] = random.choice(move_names)
+            child_state = start_state
+            for m in child_moves:
+                child_state = child_state.apply_move(m, moves_dict)
+            next_gen.append((child_state, child_moves))
+            nodes_visited += 1
+        population = next_gen
+        if return_stats:
+            fits = [fitness(x[0]) for x in population]
+            stats['best_fitness'].append(min(fits))
+            stats['avg_fitness'].append(sum(fits)/len(fits))
+            stats['diversity'].append(len(set(hash(x[0]) for x in population)))
     if return_stats:
         return None, nodes_visited, time.time() - start_time, stats
     return None, nodes_visited, time.time() - start_time
 
 def local_beam_search_2x2(start_state, goal_state=None, moves_dict=None, time_limit=30, beam_width=10, max_iterations=1000, return_stats=False):
     """
-    Local Beam Search algorithm for 2x2 Rubik's cube
-    
-    Args:
-        start_state: Starting state (Rubik2x2State)
-        goal_state: Goal state (default is SOLVED_STATE_2x2)
-        moves_dict: Dictionary of moves (default is MOVES_2x2)
-        time_limit: Time limit in seconds (default is 30)
-        beam_width: Number of states to keep track of (default is 10)
-        max_iterations: Maximum number of iterations (default is 1000)
-        return_stats: Whether to return detailed statistics (default is False)
-    
-    Returns:
-        tuple: (path, nodes_visited, time_taken) or (path, nodes_visited, time_taken, stats)
+    Local Beam Search algorithm for 2x2 Rubik's cube (cài đặt đầy đủ)
     """
-    # Set defaults if not provided
     goal_state = goal_state or SOLVED_STATE_2x2
     moves_dict = moves_dict or MOVES_2x2
-    
-    # Get list of move names
     move_names = list(moves_dict.keys())
-    
-    # Count visited nodes
     nodes_visited = 0
-    
-    # Thêm thống kê
-    if return_stats:
-        stats = {
-            'memory_used': beam_width,         # Số lượng trạng thái được lưu trong bộ nhớ
-            'total_generated': 0,              # Tổng số trạng thái được tạo ra
-            'best_h_values': [],               # Giá trị heuristic tốt nhất theo lần lặp
-            'beam_diversity': [],              # Đa dạng của các trạng thái trong beam
-        }
-
-    # TODO: Implement Local Beam Search
-    # Current implementation is just a placeholder
-    
     start_time = time.time()
-    # No solution found
+    max_path_len = 12
+    beam = []
+    for _ in range(beam_width):
+        moves = [random.choice(move_names) for _ in range(random.randint(1, max_path_len))]
+        state = start_state
+        for m in moves:
+            state = state.apply_move(m, moves_dict)
+        beam.append((state, moves))
+    if return_stats:
+        stats = {'memory_used': beam_width, 'total_generated': beam_width, 'best_h_values': [], 'beam_diversity': []}
+    for iteration in range(max_iterations):
+        if time.time() - start_time > time_limit:
+            break
+        beam = sorted(beam, key=lambda x: heuristic_2x2(x[0]))
+        if heuristic_2x2(beam[0][0]) == 0:
+            if return_stats:
+                return beam[0][1], nodes_visited, time.time() - start_time, stats
+            return beam[0][1], nodes_visited, time.time() - start_time
+        candidates = []
+        for state, moves in beam:
+            for move in move_names:
+                new_moves = moves + [move]
+                if len(new_moves) > max_path_len:
+                    continue
+                new_state = state.apply_move(move, moves_dict)
+                candidates.append((new_state, new_moves))
+                nodes_visited += 1
+        if not candidates:
+            break
+        beam = sorted(candidates, key=lambda x: heuristic_2x2(x[0]))[:beam_width]
+        if return_stats:
+            hvals = [heuristic_2x2(x[0]) for x in beam]
+            stats['best_h_values'].append(min(hvals))
+            stats['beam_diversity'].append(len(set(hash(x[0]) for x in beam)))
     if return_stats:
         return None, nodes_visited, time.time() - start_time, stats
     return None, nodes_visited, time.time() - start_time
 
 def and_or_graph_search_2x2(start_state, goal_state=None, moves_dict=None, time_limit=30, max_depth=10, return_stats=False):
     """
-    AND-OR Graph Search algorithm for 2x2 Rubik's cube
-    For complex environment search problems
-    
-    Args:
-        start_state: Starting state (Rubik2x2State)
-        goal_state: Goal state (default is SOLVED_STATE_2x2)
-        moves_dict: Dictionary of moves (default is MOVES_2x2)
-        time_limit: Time limit in seconds (default is 30)
-        max_depth: Maximum search depth (default is 10)
-        return_stats: Whether to return detailed statistics (default is False)
-    
-    Returns:
-        tuple: (path, nodes_visited, time_taken) or (path, nodes_visited, time_taken, stats)
+    AND-OR Graph Search algorithm for 2x2 Rubik's cube (DFS, giải quyết AND/OR node)
     """
-    # Set defaults if not provided
     goal_state = goal_state or SOLVED_STATE_2x2
     moves_dict = moves_dict or MOVES_2x2
-    
-    # Get list of move names
     move_names = list(moves_dict.keys())
-    
-    # Count visited nodes
     nodes_visited = 0
-    
-    # Thêm thống kê
-    if return_stats:
-        stats = {
-            'memory_used': 0,                  # Số lượng trạng thái được lưu trong bộ nhớ
-            'total_generated': 0,              # Tổng số trạng thái được tạo ra
-            'and_nodes': 0,                    # Số nút AND
-            'or_nodes': 0,                     # Số nút OR
-        }
-
-    # TODO: Implement AND-OR Graph Search
-    # Current implementation is just a placeholder
-    
     start_time = time.time()
-    # No solution found
+    def and_or_dfs(state, path, depth):
+        nonlocal nodes_visited
+        if time.time() - start_time > time_limit or depth > max_depth:
+            return None
+        nodes_visited += 1
+        if state == goal_state:
+            return path
+        # OR node: thử từng move
+        for move in move_names:
+            next_state = state.apply_move(move, moves_dict)
+            # AND node: giả sử mọi move đều có thể xảy ra (ở Rubik thì chỉ có 1 move, nên coi như OR node)
+            result = and_or_dfs(next_state, path + [move], depth + 1)
+            if result is not None:
+                return result
+        return None
+    result = and_or_dfs(start_state, [], 0)
     if return_stats:
-        return None, nodes_visited, time.time() - start_time, stats
-    return None, nodes_visited, time.time() - start_time
+        stats = {'nodes_visited': nodes_visited}
+        return result, nodes_visited, time.time() - start_time, stats
+    return result, nodes_visited, time.time() - start_time
 
 def belief_states_search_2x2(start_state, goal_state=None, moves_dict=None, time_limit=30, max_iterations=1000, return_stats=False):
     """
-    Belief States Search algorithm for 2x2 Rubik's cube
-    For complex environment search problems with uncertainty
-    
-    Args:
-        start_state: Starting state (Rubik2x2State)
-        goal_state: Goal state (default is SOLVED_STATE_2x2)
-        moves_dict: Dictionary of moves (default is MOVES_2x2)
-        time_limit: Time limit in seconds (default is 30)
-        max_iterations: Maximum number of iterations (default is 1000)
-        return_stats: Whether to return detailed statistics (default is False)
-    
-    Returns:
-        tuple: (path, nodes_visited, time_taken) or (path, nodes_visited, time_taken, stats)
+    Belief States Search algorithm for 2x2 Rubik's cube (forward sampling/randomized search)
     """
-    # Set defaults if not provided
     goal_state = goal_state or SOLVED_STATE_2x2
     moves_dict = moves_dict or MOVES_2x2
-    
-    # Get list of move names
     move_names = list(moves_dict.keys())
-    
-    # Count visited nodes
     nodes_visited = 0
-    
-    # Thêm thống kê
-    if return_stats:
-        stats = {
-            'memory_used': 0,                  # Số lượng trạng thái được lưu trong bộ nhớ
-            'total_generated': 0,              # Tổng số trạng thái được tạo ra
-            'belief_state_sizes': [],          # Kích thước của các belief state
-            'entropy': [],                     # Entropy của belief state theo thời gian
-        }
-
-    # TODO: Implement Belief States Search
-    # Current implementation is just a placeholder
-    
     start_time = time.time()
-    # No solution found
+    best_path = None
+    best_h = float('inf')
+    for _ in range(max_iterations):
+        if time.time() - start_time > time_limit:
+            break
+        current_state = start_state
+        path = []
+        for _ in range(12):  # max path length
+            if current_state == goal_state:
+                if len(path) < best_h:
+                    best_h = len(path)
+                    best_path = list(path)
+                break
+            move = random.choice(move_names)
+            current_state = current_state.apply_move(move, moves_dict)
+            path.append(move)
+            nodes_visited += 1
+        if current_state == goal_state and len(path) < best_h:
+            best_h = len(path)
+            best_path = list(path)
     if return_stats:
-        return None, nodes_visited, time.time() - start_time, stats
-    return None, nodes_visited, time.time() - start_time
+        stats = {'nodes_visited': nodes_visited}
+        return best_path, nodes_visited, time.time() - start_time, stats
+    return best_path, nodes_visited, time.time() - start_time
 
 def ac3_search_2x2(start_state, goal_state=None, moves_dict=None, time_limit=30, return_stats=False):
     """
