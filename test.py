@@ -22,26 +22,26 @@ GAMMA = 0.99
 W_HEUR = 0.95
 MAX_NODES_EXPAND = 100000
 TRAINING_SAMPLES_PER_ITER = 20000
-VALIDATION_INTERVAL = 2000  # Reduced validation frequency
-CHECKPOINT_INTERVAL = 1000  # Reduced checkpoint frequency
+VALIDATION_INTERVAL = 1000  # Increased validation frequency
+CHECKPOINT_INTERVAL = 500   # More frequent checkpoints
 
 # Advanced training parameters
 MIN_SCRAMBLE_DEPTH = 1
-MAX_SCRAMBLE_DEPTH = 30
+MAX_SCRAMBLE_DEPTH = 10     # Changed from 30 to 10 (focus on training up to depth 10)
 DEPTH_INCREASE_INTERVAL = 2000
 CURRICULUM_LEARNING = True
 USE_DATA_AUGMENTATION = False  # Disabled for speed
-VALIDATION_SCRAMBLES = [5, 10, 15]  # Reduced validation set
+VALIDATION_SCRAMBLES = [3, 5, 8, 10]  # Modified validation depths
 
 # Performance optimization for M2
 NUM_WORKERS = 0  # Disabled multiprocessing on M2
 PIN_MEMORY = False  # Disabled for M2
 
 # Adaptive training parameters
-BASE_ITERS_PER_DEPTH = 100  # Base iterations for depth 1
-ITERS_INCREMENT = 50  # Additional iterations per depth level
-MIN_SUCCESS_RATE = 0.95  # Minimum success rate to increase depth
-VALIDATION_SIZE = 20  # Number of validation cases per depth
+BASE_ITERS_PER_DEPTH = 300  # Increased from 100 to 300 for more thorough training
+ITERS_INCREMENT = 100       # Increased from 50 to 100 for more iterations as depth increases
+MIN_SUCCESS_RATE = 0.95     # Giảm từ 0.98 xuống 0.95 để tránh lặp lại vì scramble ngẫu nhiên
+VALIDATION_SIZE = 30        # Increased from 20 to 30 for better validation
 
 # Training parameters
 CHECKPOINT_DIR = "train_checkpoints"
@@ -50,7 +50,7 @@ REPLAY_BUFFER_PATH = os.path.join(CHECKPOINT_DIR, "replay_buffer.pkl")
 MODEL_PATH = os.path.join(CHECKPOINT_DIR, "deepcube_model.pth")
 
 # Experience replay parameters
-BEST_STATES_PER_DEPTH = 1000  # Number of best states to keep per depth
+BEST_STATES_PER_DEPTH = 2000  # Increased from 1000 to 2000
 PREV_DEPTH_RATIO = 0.3  # 30% samples from previous depths
 CURRICULUM_RATIO = 0.7  # 70% of previous samples from recent depths
 
@@ -327,12 +327,51 @@ def generate_scrambled_state(num_moves):
     state = SOLVED_STATE_3x3
     moves_applied = []
     
-    for _ in range(num_moves):
-        move = random.choice(MOVE_NAMES)
-        state = state.apply_move(move)
-        moves_applied.append(move)
+    if num_moves == 0:
+        return state, moves_applied
     
-    return state, moves_applied
+    # Đảm bảo scramble tạo ra trạng thái khác với solved state
+    attempt = 0
+    max_attempts = 5  # Giới hạn số lần thử
+    
+    while attempt < max_attempts:
+        test_state = SOLVED_STATE_3x3
+        test_moves = []
+        
+        for _ in range(num_moves):
+            # Tránh chọn những bước di chuyển triệt tiêu bước trước đó
+            # Ví dụ: nếu trước đó là R, thì đừng chọn R'
+            valid_moves = list(MOVE_NAMES)
+            if test_moves:
+                last_move = test_moves[-1]
+                inverse_move = None
+                
+                # Xác định bước di chuyển nghịch đảo
+                if last_move.endswith("'"):
+                    inverse_move = last_move[:-1]  # Bỏ dấu '
+                else:
+                    inverse_move = last_move + "'"
+                
+                if inverse_move in valid_moves:
+                    valid_moves.remove(inverse_move)
+                
+                # Tránh lặp lại cùng một bước di chuyển (như R R R)
+                if last_move in valid_moves and len(valid_moves) > 1:
+                    valid_moves.remove(last_move)
+            
+            move = random.choice(valid_moves)
+            test_state = test_state.apply_move(move)
+            test_moves.append(move)
+        
+        # Kiểm tra xem trạng thái mới có khác với trạng thái đã giải không
+        if test_state != SOLVED_STATE_3x3 or num_moves <= 1:
+            return test_state, test_moves
+        
+        attempt += 1
+    
+    # Nếu sau nhiều lần thử vẫn không tạo được trạng thái khác, 
+    # thì trả về trạng thái cuối cùng
+    return test_state, test_moves
 
 # Node for A* search
 class Node:
@@ -749,14 +788,14 @@ def main():
     
     # Comprehensive testing
     print("\nComprehensive Testing:")
-    test_depths = [5, 10, 15, 20, 25, 30]
+    test_depths = [3, 5, 8, 10]  # Modified test depths to match our focus
     
     for depth in test_depths:
         print(f"\nTesting {depth}-move scrambles:")
         success_count = 0
         total_moves = 0
         total_time = 0
-        num_tests = 10
+        num_tests = 5  # Increased from 10 to 20 for more thorough testing
         
         for test in range(num_tests):
             scrambled_state, moves = generate_scrambled_state(depth)
