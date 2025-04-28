@@ -13,6 +13,7 @@ from RubikState.rubik_solver import (
     and_or_graph_search, belief_states_search, ac3_search,
     backtracking_search_strategy1, backtracking_search_strategy2
 )
+from RubikState.rubik_deepcube import DeepCubeSolver
 
 # Tạo Worker Thread để chạy thuật toán giải trong luồng riêng biệt
 class SolverThread(QThread):
@@ -274,7 +275,7 @@ class ControlsWidget(QWidget):
         rl_layout = QVBoxLayout(rl_tab)
         
         # Radio buttons
-        self.rl_dqn_radio = QRadioButton("Deep Q-Network (DQN)")
+        self.rl_dqn_radio = QRadioButton("DeepCubeA")
         
         # Thêm vào button group
         self.algorithm_button_group.addButton(self.rl_dqn_radio, 10)
@@ -632,8 +633,7 @@ class ControlsWidget(QWidget):
                 "hill_climbing_max": hill_climbing_max,
                 "hill_climbing_random": hill_climbing_random,
                 "pdb_astar": pdb_astar,
-                "rl_dqn": None,  # Placeholder cho Deep Q-Network
-                # Thêm các thuật toán mới
+                "deepcube": lambda state, time_limit, return_stats: DeepCubeSolver().solve(state),
                 "simulated_annealing": simulated_annealing,
                 "genetic_algorithm": genetic_algorithm,
                 "local_beam_search": local_beam_search,
@@ -644,11 +644,6 @@ class ControlsWidget(QWidget):
                 "backtracking_2": backtracking_search_strategy2,
             }
             
-            # Kiểm tra nếu thuật toán là RL, hiện thông báo
-            if algorithm_name == "rl_dqn":
-                self.solution_status.setText("Thuật toán Deep Q-Network đang trong quá trình phát triển!")
-                return
-                
             if algorithm_name not in algorithm_funcs or algorithm_funcs[algorithm_name] is None:
                 self.solution_status.setText(f"Thuật toán {algorithm_display_name} chưa được triển khai!")
                 return
@@ -770,7 +765,7 @@ class ControlsWidget(QWidget):
             7: ("Hill Climbing Max", "hill_climbing_max"),
             8: ("Hill Climbing Random", "hill_climbing_random"),
             9: ("Pattern Database A*", "pdb_astar"),
-            10: ("Deep Q-Network", "rl_dqn"),
+            10: ("DeepCubeA", "deepcube"),
             11: ("Simulated Annealing", "simulated_annealing"),
             12: ("Genetic Algorithm", "genetic_algorithm"),
             13: ("Local Beam Search", "local_beam_search"),
@@ -779,7 +774,6 @@ class ControlsWidget(QWidget):
             16: ("AC-3", "ac3"),
             17: ("Backtracking Search (Gán giá trị từng biến)", "backtracking_1"),
             18: ("Backtracking Search (Kiểm tra ràng buộc sớm)", "backtracking_2")
-            # Thêm thuật toán mới vào đây
         }
     
     def update_progress(self):
