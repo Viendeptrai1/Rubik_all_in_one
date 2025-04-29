@@ -15,8 +15,8 @@ DEVICE = torch.device("cpu")  # Force CPU usage
 BATCH_SIZE = 2048  # Increased batch size for better learning
 REPLAY_BUFFER_SIZE = 5000000  # 5M buffer size
 NUM_SCRAMBLES = 50
-NUM_AVI_ITERATIONS = 50000
-LEARNING_RATE = 0.0005  # Decreased from 0.001 to 0.0005 for more stable learning
+NUM_AVI_ITERATIONS = 500000
+LEARNING_RATE = 0.00005  # Decreased from 0.001 to 0.0005 for more stable learning
 EPSILON = 0.05
 GAMMA = 0.99
 W_HEUR = 1.0  # Changed from 3 to 1.0 for optimal A* heuristic utilization
@@ -46,7 +46,7 @@ PIN_MEMORY = False  # Disable for CPU usage
 # Adaptive training parameters
 BASE_ITERS_PER_DEPTH = 1000  # Increased from 700 to 1000 for more thorough training at each depth
 ITERS_INCREMENT = 300       # Increased to 300 for more iterations as depth increases
-MIN_SUCCESS_RATE = 0.95     # Slightly reduced from 0.98 to 0.95 to avoid excessive training
+MIN_SUCCESS_RATE = 0.9     # Slightly reduced from 0.98 to 0.95 to avoid excessive training
 VALIDATION_SIZE = 50        # Increased from 30 to 50 for more reliable validation
 
 # PER parameters
