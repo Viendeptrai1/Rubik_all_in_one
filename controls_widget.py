@@ -14,6 +14,9 @@ from RubikState.rubik_solver import (
     backtracking_search_strategy1, backtracking_search_strategy2
 )
 from RubikState.rubik_deepcube import DeepCubeSolver
+# Import thêm solver PDB 2x2 và DeepCubeA 2x2
+from rubik_2x2_pdb_solver import PDBSolver
+from rubik_2x2_ai import DeepCube2x2Solver
 
 # Tạo Worker Thread để chạy thuật toán giải trong luồng riêng biệt
 class SolverThread(QThread):
@@ -212,19 +215,16 @@ class ControlsWidget(QWidget):
         self.astar_radio = QRadioButton("A* Search")
         self.idastar_radio = QRadioButton("IDA* Search")
         self.greedy_radio = QRadioButton("Greedy Best-First Search")
-        self.pdb_astar_radio = QRadioButton("Pattern Database A* Search")
         
         # Thêm vào button group
         self.algorithm_button_group.addButton(self.astar_radio, 4)
         self.algorithm_button_group.addButton(self.idastar_radio, 5)
         self.algorithm_button_group.addButton(self.greedy_radio, 6)
-        self.algorithm_button_group.addButton(self.pdb_astar_radio, 9)
         
         # Thêm vào layout
         informed_layout.addWidget(self.astar_radio)
         informed_layout.addWidget(self.idastar_radio)
         informed_layout.addWidget(self.greedy_radio)
-        informed_layout.addWidget(self.pdb_astar_radio)
         informed_layout.addStretch()
         
         # --- Tab 3: Thuật toán tìm kiếm cục bộ ---
@@ -275,13 +275,19 @@ class ControlsWidget(QWidget):
         rl_layout = QVBoxLayout(rl_tab)
         
         # Radio buttons
-        self.rl_dqn_radio = QRadioButton("DeepCubeA")
+        self.rl_dqn_radio = QRadioButton("DeepCubeA (3x3)")
+        self.rl_pdb_2x2_radio = QRadioButton("Pattern Database (2x2)")
+        self.rl_deepcube_2x2_radio = QRadioButton("DeepCubeA (2x2)")
         
         # Thêm vào button group
         self.algorithm_button_group.addButton(self.rl_dqn_radio, 10)
+        self.algorithm_button_group.addButton(self.rl_pdb_2x2_radio, 19)
+        self.algorithm_button_group.addButton(self.rl_deepcube_2x2_radio, 20)
         
         # Thêm vào layout
         rl_layout.addWidget(self.rl_dqn_radio)
+        rl_layout.addWidget(self.rl_pdb_2x2_radio)
+        rl_layout.addWidget(self.rl_deepcube_2x2_radio)
         rl_layout.addStretch()
         
         # Thêm các tab vào tabwidget
@@ -634,6 +640,10 @@ class ControlsWidget(QWidget):
                 "hill_climbing_random": hill_climbing_random,
                 "pdb_astar": pdb_astar,
                 "deepcube": lambda state, time_limit, return_stats: DeepCubeSolver().solve(state),
+                "pdb_2x2": lambda state, time_limit, return_stats: 
+                    self.wrap_pdb_2x2_solver(state, time_limit),
+                "deepcube_2x2": lambda state, time_limit, return_stats: 
+                    self.wrap_deepcube_2x2_solver(state, time_limit),
                 "simulated_annealing": simulated_annealing,
                 "genetic_algorithm": genetic_algorithm,
                 "local_beam_search": local_beam_search,
@@ -765,7 +775,7 @@ class ControlsWidget(QWidget):
             7: ("Hill Climbing Max", "hill_climbing_max"),
             8: ("Hill Climbing Random", "hill_climbing_random"),
             9: ("Pattern Database A*", "pdb_astar"),
-            10: ("DeepCubeA", "deepcube"),
+            10: ("DeepCubeA (3x3)", "deepcube"),
             11: ("Simulated Annealing", "simulated_annealing"),
             12: ("Genetic Algorithm", "genetic_algorithm"),
             13: ("Local Beam Search", "local_beam_search"),
@@ -773,7 +783,9 @@ class ControlsWidget(QWidget):
             15: ("Belief States", "belief_states"),
             16: ("AC-3", "ac3"),
             17: ("Backtracking Search (Gán giá trị từng biến)", "backtracking_1"),
-            18: ("Backtracking Search (Kiểm tra ràng buộc sớm)", "backtracking_2")
+            18: ("Backtracking Search (Kiểm tra ràng buộc sớm)", "backtracking_2"),
+            19: ("Pattern Database (2x2)", "pdb_2x2"),
+            20: ("DeepCubeA (2x2)", "deepcube_2x2")
         }
     
     def update_progress(self):
@@ -917,3 +929,71 @@ class ControlsWidget(QWidget):
             
         # Áp dụng lời giải cho Rubik 3D
         self.apply_moves_to_3d_cube(self.current_solution)
+
+    def wrap_pdb_2x2_solver(self, state, time_limit):
+        """Wrapper để chuyển đổi kết quả từ PDBSolver sang định dạng tương thích"""
+        try:
+            # Bắt đầu đo thời gian
+            start_time = time.time()
+            
+            # Gọi solver
+            pdb_solver = PDBSolver()
+            solution = pdb_solver.solve(state, time_limit=time_limit)
+            
+            # Nếu tìm thấy lời giải
+            if solution:
+                # Thời gian giải
+                solve_time = time.time() - start_time
+                
+                # Tạo stats dict - lấy từ PDBSolver nếu có, hoặc tạo rỗng
+                stats = getattr(pdb_solver, 'stats', {})
+                if not stats:
+                    stats = {'memory_used': 0, 'effective_branching': 0, 'pruning_ratio': 0}
+                
+                # Lấy số nodes đã duyệt
+                nodes_visited = getattr(pdb_solver, 'nodes_expanded', 0)
+                if not nodes_visited:
+                    nodes_visited = 0
+                
+                return solution, nodes_visited, solve_time, stats
+            else:
+                # Không tìm thấy lời giải
+                return None, 0, time.time() - start_time, {}
+        except Exception as e:
+            print(f"Lỗi khi sử dụng PDBSolver: {str(e)}")
+            return None, 0, 0, {}
+    
+    def wrap_deepcube_2x2_solver(self, state, time_limit):
+        """Wrapper để chuyển đổi kết quả từ DeepCube2x2Solver sang định dạng tương thích"""
+        try:
+            # Bắt đầu đo thời gian
+            start_time = time.time()
+            
+            # Gọi solver
+            solver = DeepCube2x2Solver()
+            solver.load_model()  # Đảm bảo model đã được load
+            solution = solver.solve(state)
+            
+            # Nếu tìm thấy lời giải
+            if solution:
+                # Thời gian giải
+                solve_time = time.time() - start_time
+                
+                # Tạo stats dict
+                stats = {
+                    'memory_used': getattr(solver, 'nodes_expanded', 0),
+                    'effective_branching': 0,
+                    'pruning_ratio': 0,
+                    'algorithm': 'DeepCube2x2'
+                }
+                
+                # Lấy số nodes đã duyệt
+                nodes_visited = getattr(solver, 'nodes_expanded', len(solution) * 12)  # rough estimate if not available
+                
+                return solution, nodes_visited, solve_time, stats
+            else:
+                # Không tìm thấy lời giải
+                return None, 0, time.time() - start_time, {}
+        except Exception as e:
+            print(f"Lỗi khi sử dụng DeepCube2x2Solver: {str(e)}")
+            return None, 0, 0, {}
