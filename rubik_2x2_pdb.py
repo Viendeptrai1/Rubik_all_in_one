@@ -11,7 +11,7 @@ PDB_DIR = "pattern_database_2x2"
 CHECKPOINT_PATH = os.path.join(PDB_DIR, "pdb_checkpoint.pkl")
 FULL_PDB_PATH = os.path.join(PDB_DIR, "full_pdb.pkl")
 BATCH_SIZE = 100000  # Number of states to process before saving a checkpoint
-MAX_DEPTH = 8  # Maximum depth to explore (should be enough for 2x2 cube)
+MAX_DEPTH = 6  # Maximum depth to explore (should be enough for 2x2 cube)
 MEMORY_CHECK_INTERVAL = 10000  # How often to check memory usage
 
 def ensure_pdb_dir():

@@ -58,26 +58,28 @@ class MainWindow(QMainWindow):
         main_layout.addWidget(tabs)
 
         # Dock widget bên phải cho controls
-        dock = QDockWidget("Điều khiển", self)
-        dock.setFeatures(QDockWidget.NoDockWidgetFeatures)
+        self.dock = QDockWidget("Điều khiển", self)
+        self.dock.setFeatures(QDockWidget.NoDockWidgetFeatures)
         self.controls = ControlsWidget(self.current_rubik_widget)
-        dock.setWidget(self.controls)
-        self.addDockWidget(Qt.RightDockWidgetArea, dock)
+        self.dock.setWidget(self.controls)
+        self.addDockWidget(Qt.RightDockWidgetArea, self.dock)
         
         # Set kích thước cố định cho dock
-        dock.setFixedWidth(700)
+        self.dock.setFixedWidth(700)
     
     def on_tab_changed(self, index):
         """Xử lý khi người dùng chuyển tab"""
         if index == 0:  # Rubik 3x3
             self.current_rubik_widget = self.rubik_widget_3x3
             self.controls.setVisible(True)
+            self.dock.setVisible(True)
         elif index == 1:  # Rubik 2x2
             self.current_rubik_widget = self.rubik_widget_2x2
             self.controls.setVisible(True)
+            self.dock.setVisible(True)
         else:  # CSP
-            # Ẩn controls widget khi ở tab CSP vì CSP sẽ có giao diện riêng
-            self.controls.setVisible(False)
+            # Ẩn hoàn toàn dock widget khi ở tab CSP để CSP widget sử dụng toàn bộ không gian
+            self.dock.setVisible(False)
             return
             
         # Chỉ cập nhật widget controls nếu đang ở tab Rubik

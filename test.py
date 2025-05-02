@@ -77,7 +77,6 @@ def save_checkpoint(solver, iteration, scramble_depth, path=CHECKPOINT_PATH, buf
     torch.save({
         'model_state_dict': solver.model.state_dict(),
         'optimizer_state_dict': solver.optimizer.state_dict(),
-        'use_branched': solver.use_branched,
         'iteration': iteration,
         'scramble_depth': scramble_depth,
     }, path)
@@ -110,7 +109,6 @@ def load_checkpoint(solver, path=CHECKPOINT_PATH, buffer_path=REPLAY_BUFFER_PATH
     checkpoint = torch.load(path, map_location=DEVICE)
     solver.model.load_state_dict(checkpoint['model_state_dict'])
     solver.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-    solver.use_branched = checkpoint['use_branched']
     
     # Try to load replay buffer
     try:
@@ -142,27 +140,6 @@ def load_checkpoint(solver, path=CHECKPOINT_PATH, buffer_path=REPLAY_BUFFER_PATH
     return checkpoint['iteration'], checkpoint['scramble_depth']
 
 # Define the DeepCubeA network
-class DeepCubeA(nn.Module):
-    def __init__(self):
-        super(DeepCubeA, self).__init__()
-        
-        # Define network architecture
-        # Simple version: flatten all inputs into a single vector
-        self.fc1 = nn.Linear(40, 512)
-        self.fc2 = nn.Linear(512, 256)
-        self.fc3 = nn.Linear(256, 128)
-        self.fc4 = nn.Linear(128, 1)
-        
-        self.relu = nn.ReLU()
-    
-    def forward(self, x):
-        x = self.relu(self.fc1(x))
-        x = self.relu(self.fc2(x))
-        x = self.relu(self.fc3(x))
-        x = self.fc4(x)
-        return x
-
-# Branched version of the network
 class BranchedDeepCubeA(nn.Module):
     def __init__(self):
         super(BranchedDeepCubeA, self).__init__()
@@ -199,8 +176,8 @@ class BranchedDeepCubeA(nn.Module):
 
 # State encoder - converts RubikState to tensor input for neural network
 class StateEncoder:
-    def __init__(self, use_branched=False):
-        self.use_branched = use_branched
+    def __init__(self):
+        pass
     
     def encode(self, state):
         # Normalize values to [0,1] range
@@ -217,34 +194,25 @@ class StateEncoder:
         # Edge orientation (eo): Map from 0-1 to [0,1] (already in range)
         eo_normalized = list(state.eo)
         
-        if self.use_branched:
-            # For branched network, separate permutations and orientations
-            perm_data = cp_normalized + ep_normalized
-            orient_data = co_normalized + eo_normalized
-            
-            perm_tensor = torch.FloatTensor(perm_data).to(DEVICE)
-            orient_tensor = torch.FloatTensor(orient_data).to(DEVICE)
-            
-            return perm_tensor, orient_tensor
-        else:
-            # For simple network, flatten everything into one vector
-            flat_data = cp_normalized + co_normalized + ep_normalized + eo_normalized
-            return torch.FloatTensor(flat_data).to(DEVICE)
+        # For branched network, separate permutations and orientations
+        perm_data = cp_normalized + ep_normalized
+        orient_data = co_normalized + eo_normalized
+        
+        perm_tensor = torch.FloatTensor(perm_data).to(DEVICE)
+        orient_tensor = torch.FloatTensor(orient_data).to(DEVICE)
+        
+        return perm_tensor, orient_tensor
     
     def encode_batch(self, states):
-        if self.use_branched:
-            perm_batch = []
-            orient_batch = []
-            
-            for state in states:
-                perm, orient = self.encode(state)
-                perm_batch.append(perm)
-                orient_batch.append(orient)
-            
-            return torch.stack(perm_batch), torch.stack(orient_batch)
-        else:
-            batch = [self.encode(state) for state in states]
-            return torch.stack(batch)
+        perm_batch = []
+        orient_batch = []
+        
+        for state in states:
+            perm, orient = self.encode(state)
+            perm_batch.append(perm)
+            orient_batch.append(orient)
+        
+        return torch.stack(perm_batch), torch.stack(orient_batch)
 
 # Replay buffer for storing experience with Prioritized Experience Replay
 class SmartReplayBuffer:
@@ -532,14 +500,8 @@ class Node:
 
 # Approximate Value Iteration (AVI) implementation
 class DeepCubeASolver:
-    def __init__(self, use_branched=False):
-        self.use_branched = use_branched
-        
-        if use_branched:
-            self.model = BranchedDeepCubeA().to(DEVICE)
-        else:
-            self.model = DeepCubeA().to(DEVICE)
-        
+    def __init__(self):
+        self.model = BranchedDeepCubeA().to(DEVICE)
         self.optimizer = optim.Adam(self.model.parameters(), lr=LEARNING_RATE)
         
         # Add LR scheduler
@@ -555,7 +517,7 @@ class DeepCubeASolver:
             )
         
         self.criterion = nn.MSELoss(reduction='none')  # Changed to 'none' for PER
-        self.encoder = StateEncoder(use_branched=use_branched)
+        self.encoder = StateEncoder()
         self.replay_buffer = SmartReplayBuffer(REPLAY_BUFFER_SIZE)
         
         # Initialize replay buffer with solved state
@@ -565,11 +527,8 @@ class DeepCubeASolver:
         """Predict the value (cost-to-go) for a given state"""
         self.model.eval()
         with torch.no_grad():
-            encoded = self.encoder.encode(state)
-            if self.use_branched:
-                return self.model(encoded[0].unsqueeze(0), encoded[1].unsqueeze(0)).item()
-            else:
-                return self.model(encoded.unsqueeze(0)).item()
+            perm, orient = self.encoder.encode(state)
+            return self.model(perm.unsqueeze(0), orient.unsqueeze(0)).item()
     
     def get_best_move(self, state):
         """Get best move using epsilon-greedy policy"""
@@ -601,12 +560,8 @@ class DeepCubeASolver:
         states, values = zip(*batch)
         
         # Forward pass
-        if self.use_branched:
-            perm_batch, orient_batch = self.encoder.encode_batch(states)
-            predictions = self.model(perm_batch, orient_batch).squeeze()
-        else:
-            inputs = self.encoder.encode_batch(states)
-            predictions = self.model(inputs).squeeze()
+        perm_batch, orient_batch = self.encoder.encode_batch(states)
+        predictions = self.model(perm_batch, orient_batch).squeeze()
         
         # Backward pass with importance sampling weights if PER is used
         target_values = torch.FloatTensor(values).to(DEVICE)
@@ -690,12 +645,8 @@ class DeepCubeASolver:
                 
                 self.optimizer.zero_grad()
                 
-                if self.use_branched:
-                    perm_batch, orient_batch = self.encoder.encode_batch(states)
-                    predictions = self.model(perm_batch, orient_batch).squeeze()
-                else:
-                    inputs = self.encoder.encode_batch(states)
-                    predictions = self.model(inputs).squeeze()
+                perm_batch, orient_batch = self.encoder.encode_batch(states)
+                predictions = self.model(perm_batch, orient_batch).squeeze()
                 
                 target_values = torch.FloatTensor(values).to(DEVICE)
                 
@@ -739,12 +690,8 @@ class DeepCubeASolver:
                         new_states.append(scrambled_state)
                         new_values.append(float(current_depth))
                     
-                    if self.use_branched:
-                        perm_batch, orient_batch = self.encoder.encode_batch(new_states)
-                        new_predictions = self.model(perm_batch, orient_batch).squeeze()
-                    else:
-                        inputs = self.encoder.encode_batch(new_states)
-                        new_predictions = self.model(inputs).squeeze()
+                    perm_batch, orient_batch = self.encoder.encode_batch(new_states)
+                    new_predictions = self.model(perm_batch, orient_batch).squeeze()
                     
                     for state, value, pred in zip(new_states, new_values, new_predictions):
                         state_loss = abs(value - pred.item())
@@ -894,18 +841,11 @@ class DeepCubeASolver:
         torch.save({
             'model_state_dict': self.model.state_dict(),
             'optimizer_state_dict': self.optimizer.state_dict(),
-            'use_branched': self.use_branched
         }, path)
     
     def load_model(self, path):
         """Load a trained model from disk"""
         checkpoint = torch.load(path)
-        
-        # Ensure model architecture matches
-        if checkpoint['use_branched'] != self.use_branched:
-            print("Error: Model architecture mismatch. Cannot load model.")
-            return False
-        
         self.model.load_state_dict(checkpoint['model_state_dict'])
         self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         return True
@@ -929,8 +869,8 @@ def print_solution(initial_state, solution_path):
 
 def test_solver():
     """Test the DeepCubeA solver on a scrambled cube"""
-    # Use simple network (not branched) for testing
-    solver = DeepCubeASolver(use_branched=False)
+    # Use branched network for testing
+    solver = DeepCubeASolver()
     
     # Train for a few iterations (in practice, this would be much more)
     solver.train_avi(num_iterations=10)  # Just a few iterations for testing
@@ -952,7 +892,7 @@ def main():
     print(f"Starting DeepCubeA training on {DEVICE}")
     
     # Initialize solver with branched network
-    solver = DeepCubeASolver(use_branched=True)
+    solver = DeepCubeASolver()
     
     # Load checkpoint if exists
     start_iter, start_depth = load_checkpoint(solver)
