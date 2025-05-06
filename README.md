@@ -1,98 +1,103 @@
-# Phân Tích Thuật Toán AI Trên Khối Rubik
+# 🧩 3D Rubik Simulator & Solver 🤖
 
-Nền tảng nghiên cứu học thuật để phân tích toàn diện hiệu suất các thuật toán trí tuệ nhân tạo cho bài toán khối Rubik.
+Dự án mô phỏng khối Rubik 3D (2x2x2 và 3x3x3) và triển khai, so sánh hiệu quả của các thuật toán Trí tuệ Nhân tạo (AI) để tìm lời giải.
 
-## Mục Tiêu Nghiên Cứu
+**Sinh viên thực hiện:**
+* Phan Quốc Viễn - 23110362
+* Nguyễn Nhật Huy - 23110226
 
-Dự án cung cấp nền tảng để đánh giá và so sánh hiệu suất của nhiều thuật toán tìm kiếm AI khác nhau khi áp dụng vào bài toán khối Rubik. Hệ thống thu thập các chỉ số hiệu suất chi tiết cho từng thuật toán, giúp:
+**Giảng viên hướng dẫn:** [Tên giảng viên]
 
-- So sánh hiệu quả và độ phức tạp của nhiều chiến lược tìm kiếm
-- Phân tích đặc tính heuristic và ảnh hưởng đến hiệu suất thuật toán
-- Đánh giá tốc độ hội tụ của các phương pháp tìm kiếm cục bộ
-- Trực quan hóa quá trình tìm kiếm và không gian trạng thái
+---
 
-## Chỉ Số Phân Tích
+## 📜 Tổng quan Dự án
 
-Hệ thống theo dõi và phân tích các chỉ số hiệu suất chính:
+Khối Rubik là một bài toán tổ hợp kinh điển với không gian trạng thái khổng lồ ($> 4.3 \times 10^{19}$ cho 3x3x3), là một thử thách thú vị cho các thuật toán tìm kiếm AI. Dự án này cung cấp:
+* **Môi trường mô phỏng 3D tương tác:** Cho phép xoay, xáo trộn và quan sát quá trình giải Rubik.
+* **Triển khai đa dạng thuật toán AI:** Từ tìm kiếm mù, có thông tin, tìm kiếm cục bộ đến học tăng cường.
+* **Công cụ đánh giá và so sánh:** Phân tích hiệu năng các thuật toán dựa trên thời gian, số bước, bộ nhớ,...
+* **Mục đích học tập:** Giúp sinh viên hiểu rõ hơn về các thuật toán AI qua ví dụ trực quan.
 
-### Chỉ Số Hiệu Suất Cơ Bản
-- **Thời gian thực thi**: Thời gian tìm kiếm lời giải (giây)
-- **Số nút đã duyệt**: Số lượng trạng thái được khám phá
-- **Độ dài lời giải**: Số lượng bước tối thiểu để đạt đến trạng thái đích
+---
 
-### Chỉ Số Hiệu Suất Nâng Cao
-- **Bộ nhớ sử dụng**: Số lượng trạng thái được lưu trữ trong bộ nhớ cùng lúc
-- **Hệ số phân nhánh hiệu quả**: Tỷ lệ giữa số trạng thái được tạo ra và số nút đã duyệt
-- **Tỷ lệ cắt tỉa**: Phần trăm trạng thái được loại bỏ không cần xem xét thêm
+## ✨ Tính năng chính
 
-### Phân Tích Heuristic
-- **Độ chính xác heuristic**: Mức độ dự đoán chính xác về khoảng cách tới đích
-- **Giá trị heuristic trung bình**: Trung bình của các giá trị heuristic được tính
-- **Thống kê lời gọi heuristic**: Tần suất và hiệu quả của hàm heuristic
+* Mô phỏng và giải khối Rubik **2x2x2** và **3x3x3**.
+* Giao diện đồ họa **3D** trực quan bằng PyQt5 và PyOpenGL.
+* Triển khai và so sánh các nhóm thuật toán:
+    * **Tìm kiếm Mù (Uninformed Search):** BFS, DFS, UCS, IDS.
+    * **Tìm kiếm Có thông tin (Informed Search):** Greedy Best-First, A*, IDA*.
+    * **Tìm kiếm Cục bộ (Local Search):** Hill Climbing (Simple, Random Restart, Stochastic), Simulated Annealing, Genetic Algorithm, Local Beam Search.
+    * **Tìm kiếm Đối nghịch & Trạng thái Tin cậy:** AND-OR Graph Search, Belief States.
+    * **Bài toán Thỏa mãn Ràng buộc (CSP):** Backtracking, AC-3.
+    * **Học Tăng cường (Reinforcement Learning):** Mô hình DeepCubeA (DQRN).
+* Sử dụng **Pattern Databases (PDB)** cho hàm heuristic (ví dụ: góc của 2x2).
+* Đánh giá hiệu năng chi tiết: thời gian, độ dài lời giải, số trạng thái duyệt/sinh ra, bộ nhớ, hệ số phân nhánh hiệu quả.
 
-### Chỉ Số Thuật Toán Đặc Biệt
-- **Nhiệt độ** (Simulated Annealing): Đường cong nhiệt độ theo thời gian
-- **Đa dạng quần thể** (Genetic Algorithm): Mức độ đa dạng của quần thể
-- **Các ngưỡng tìm kiếm** (IDA*): Các ngưỡng được sử dụng trong quá trình tìm kiếm
+---
 
-## Các Thuật Toán Đã Triển Khai
+## 🚀 Công nghệ sử dụng
 
-### Thuật Toán Tìm Kiếm Không Heuristic
-- ✅ Tìm Kiếm Theo Chiều Rộng (BFS)
-- ✅ Tìm Kiếm Theo Chiều Sâu (DFS)
-- ✅ Tìm Kiếm Chi Phí Đồng Nhất (UCS)
-- ✅ Tìm Kiếm Sâu Dần (IDS)
+* **Ngôn ngữ:** Python 3.13
+* **Giao diện & Đồ họa 3D:** PyQt5, PyOpenGL
+* **Tính toán & AI:** NumPy, PyTorch (cho DeepCubeA)
+* **Thư viện hỗ trợ:** `heapq`, `collections.deque`, `random`, `math`, `pickle`
+* **Quản lý code:** Git & GitHub
+* **IDE:** Visual Studio Code
+* **Hệ điều hành:** Đa nền tảng (Windows, macOS)
 
-### Thuật Toán Tìm Kiếm Có Heuristic
-- ✅ Tìm Kiếm A*
-- ✅ Tìm Kiếm IDA* (A* Sâu Dần)
-- ✅ Tìm Kiếm Tham Lam (Greedy Best-First)
+---
 
-### Thuật Toán Tìm Kiếm Cục Bộ
-- ✅ Leo Đồi (Steepest Ascent)
-- ✅ Leo Đồi với Khởi Động Lại Ngẫu Nhiên
-- ⏳ Mô Phỏng Luyện Kim (Simulated Annealing) - Đang phát triển
-- ⏳ Thuật Toán Di Truyền (Genetic Algorithm) - Đang phát triển
-- ⏳ Tìm Kiếm Chùm Cục Bộ (Local Beam Search) - Đang phát triển
+## 📊 Đánh giá & Kết quả (Sơ lược)
 
-### Tìm Kiếm Trong Môi Trường Phức Tạp
-- ⏳ Tìm Kiếm Đồ Thị AND-OR - Đang phát triển
-- ⏳ Tìm Kiếm Trạng Thái Niềm Tin (Belief States) - Đang phát triển
+Dự án thực hiện đánh giá thực nghiệm hiệu năng của các thuật toán trên cấu hình [Mô tả ngắn cấu hình máy tính nếu cần]. Các kết quả chi tiết về thời gian giải, số bước, bộ nhớ... được trình bày trong báo cáo đầy đủ.
 
-### Tiếp Cận Bài Toán Thỏa Mãn Ràng Buộc
-- ⏳ Thuật Toán Kiểm Tra Tính Nhất Quán AC-3 - Đang phát triển
-- ⏳ Tìm Kiếm Quay Lui (Gán Biến) - Đang phát triển
-- ⏳ Tìm Kiếm Quay Lui (Kiểm Tra Trước) - Đang phát triển
+*So sánh hiệu năng giữa các nhóm thuật toán.*
+*Phân tích đặc điểm của từng thuật toán (ví dụ: A* vs IDA*, PDB vs DeepCubeA).*
 
-### Kỹ Thuật Nâng Cao
-- ✅ A* với Cơ Sở Dữ Liệu Mẫu (Pattern Database) cho khối 2×2
-- ⏳ Mạng Q Sâu (DQN) - Đang phát triển
+**(Khuyến khích: Chèn ảnh GIF hoặc ảnh chụp màn hình giao diện phần mềm tại đây!)**
+![Demo Screenshot/GIF](link_den_anh_gif_hoac_screenshot.png)
 
-## Thuật Toán Dự Kiến (TODO)
-- ⏳ Tìm Kiếm Cây Monte Carlo (MCTS)
-- ⏳ Phương Pháp Độ Dốc Chính Sách (Policy Gradient)
-- ⏳ Tìm Kiếm Hai Chiều (Bidirectional Search)
-- ⏳ Cơ Sở Dữ Liệu Mẫu Động (Dynamic Pattern Database)
-- ⏳ Tìm Kiếm Biên (Frontier Search - Phiên Bản Tiết Kiệm Bộ Nhớ)
+---
 
-## Kiến Trúc Dự Án
+## 🛠️ Hướng dẫn cài đặt và sử dụng
 
-- `main.py`: Điểm khởi đầu ứng dụng và cấu trúc giao diện chính
-- `rubik_widget.py`: Các thành phần trực quan hóa 3D khối Rubik với OpenGL/PyQt5
-- `controls_widget.py`: Giao diện nghiên cứu, cấu hình thuật toán và hiển thị chỉ số phân tích
-- `RubikState/`:
-  - `rubik_chen.py`, `rubik_2x2.py`: Biểu diễn trạng thái và phép biến đổi khối Rubik
-  - `rubik_solver.py`: Giao diện thuật toán thống nhất
-  - `rubik_solver_2x2.py`, `rubik_solver_3x3.py`: Cài đặt thuật toán cho từng kích thước cụ thể
+1.  **Clone repository:**
+    ```bash
+    git clone [URL-GITHUB-CUA-BAN]
+    cd [TEN-THU-MUC-REPO]
+    ```
+2.  **Cài đặt thư viện:** (Nên tạo môi trường ảo virtualenv/conda)
+    ```bash
+    pip install -r requirements.txt
+    ```
+    *(Lưu ý: Bạn cần tạo file `requirements.txt` liệt kê các thư viện như PyQt5, PyOpenGL, numpy, torch)*
+3.  **Chạy ứng dụng:**
+    ```bash
+    python main.py
+    ```
+    *(Hoặc tên file Python chính của bạn)*
 
-## Ứng Dụng Học Thuật
+---
 
-Nền tảng này phù hợp cho:
-- Nghiên cứu hiệu suất thuật toán AI trên không gian trạng thái lớn
-- Phân tích so sánh các chiến lược tìm kiếm và heuristic
-- Giảng dạy về các thuật toán tìm kiếm AI và cấu trúc dữ liệu
-- Khám phá trực quan quá trình giải quyết vấn đề của AI
+## 🔗 Link Báo Cáo Đầy Đủ & Mã Nguồn
 
-## Giấy Phép
+* **Mã nguồn:** [Link đến GitHub Repo của bạn] (Thường là repo hiện tại)
+* **Báo cáo chi tiết:** [Link đến file PDF báo cáo nếu có]
 
-[Giấy Phép MIT](LICENSE)
+---
+
+## 🚧 Hạn chế & Hướng phát triển
+
+* **Hạn chế:**
+    * Pattern Database mới chỉ ở mức cơ bản cho 2x2.
+    * Huấn luyện mô hình DeepCubeA còn giới hạn (độ sâu 10) do hạn chế phần cứng.
+* **Hướng phát triển:**
+    * Mở rộng PDB cho 3x3 và các độ sâu lớn hơn.
+    * Tối ưu và huấn luyện mô hình RL sâu hơn.
+    * Thêm các kích thước Rubik khác (4x4x4,...).
+    * Cải thiện hiệu năng đồ họa và giao diện người dùng.
+
+---
+
+*Chúc bạn có trải nghiệm thú vị với dự án!*
