@@ -15,7 +15,7 @@ MODEL_PATH = "train_checkpoints_2x2/deepcube_2x2_model.pth"
 CHECKPOINT_PATH = "train_checkpoints_2x2/deepcube_2x2_checkpoint.pth"
 
 # Constants
-W_HEUR = 1.0  # Weight for heuristic in A*
+W_HEUR = 1  # Weight for heuristic in A*
 MAX_NODES_EXPAND = 100000  # Maximum nodes to expand
 
 # Define the DeepCube2x2 network
