@@ -1164,6 +1164,144 @@ def hill_climbing_random_search_3x3(start_state, goal_state=None, moves_dict=Non
         return None, nodes_visited, time.time() - start_time, stats
     return None, nodes_visited, time.time() - start_time
 
+def simple_hill_climbing_search_3x3(start_state, goal_state=None, moves_dict=None, time_limit=30, max_iterations=1000, return_stats=False):
+    """
+    Simple Hill Climbing algorithm for 3x3 Rubik's cube
+    Chooses the first neighbor with better heuristic value than current state
+    
+    Args:
+        start_state: Starting state (RubikState)
+        goal_state: Goal state (default is SOLVED_STATE_3x3)
+        moves_dict: Dictionary of moves (default is MOVES_3x3)
+        time_limit: Time limit in seconds (default is 30)
+        max_iterations: Maximum number of iterations (default is 1000)
+        return_stats: Whether to return detailed statistics (default is False)
+    
+    Returns:
+        tuple: (path, nodes_visited, time_taken) or (path, nodes_visited, time_taken, stats)
+    """
+    # Set defaults if not provided
+    goal_state = goal_state or SOLVED_STATE_3x3
+    moves_dict = moves_dict or MOVES_3x3
+    
+    # Get list of move names
+    move_names = list(moves_dict.keys())
+    
+    # Count visited nodes
+    nodes_visited = 0
+    
+    # Thêm thống kê
+    if return_stats:
+        stats = {
+            'memory_used': 1,               # Số lượng trạng thái được lưu trong bộ nhớ
+            'total_generated': 0,           # Tổng số trạng thái được tạo ra
+            'pruned_nodes': 0,              # Số nút bị cắt tỉa
+            'depth_stats': {0: 1},          # Thống kê theo độ sâu
+            'iterations': 0,                # Số lần lặp
+            'max_depth_reached': 0,         # Độ sâu tối đa đã duyệt đến
+            'moves_tried_avg': 0,           # Số lượng nước đi trung bình đã thử trước khi tìm thấy nước đi tốt hơn
+            'neighbors_stats': {            # Thống kê về hàng xóm
+                'min': float('inf'),
+                'max': 0,
+                'avg': 0,
+                'count': 0
+            }
+        }
+    
+    current_state = start_state
+    current_h = heuristic_3x3(current_state)
+    path = []
+    
+    start_time = time.time()
+    total_moves_tried = 0
+    iterations_with_improvement = 0
+    
+    # Iterate until goal is reached or no further improvement
+    for iteration in range(max_iterations):
+        if return_stats:
+            stats['iterations'] += 1
+            current_depth = len(path)
+            if current_depth > stats['max_depth_reached']:
+                stats['max_depth_reached'] = current_depth
+        
+        if time.time() - start_time > time_limit:  # Check time limit first
+            if return_stats:
+                # Calculate average moves tried before finding improvement
+                if iterations_with_improvement > 0:
+                    stats['moves_tried_avg'] = total_moves_tried / iterations_with_improvement
+                return None, nodes_visited, time.time() - start_time, stats
+            return None, nodes_visited, time.time() - start_time
+            
+        if current_state == goal_state:
+            end_time = time.time()
+            if return_stats:
+                # Calculate average moves tried before finding improvement
+                if iterations_with_improvement > 0:
+                    stats['moves_tried_avg'] = total_moves_tried / iterations_with_improvement
+                return path, nodes_visited, end_time - start_time, stats
+            return path, nodes_visited, end_time - start_time
+        
+        # Try each move until finding one that improves the heuristic
+        improved = False
+        moves_tried_this_iteration = 0
+        
+        for move in move_names:
+            nodes_visited += 1
+            moves_tried_this_iteration += 1
+            neighbor = current_state.apply_move(move, moves_dict)
+            neighbor_h = heuristic_3x3(neighbor)
+            
+            if return_stats:
+                stats['total_generated'] += 1
+                
+                # Update neighbor heuristic stats
+                if neighbor_h < stats['neighbors_stats']['min']:
+                    stats['neighbors_stats']['min'] = neighbor_h
+                if neighbor_h > stats['neighbors_stats']['max']:
+                    stats['neighbors_stats']['max'] = neighbor_h
+                stats['neighbors_stats']['count'] += 1
+                stats['neighbors_stats']['avg'] = ((stats['neighbors_stats']['avg'] * 
+                    (stats['neighbors_stats']['count'] - 1)) + neighbor_h) / stats['neighbors_stats']['count']
+            
+            # If this neighbor is better, take it immediately
+            if neighbor_h < current_h:
+                current_state = neighbor
+                current_h = neighbor_h
+                path.append(move)
+                improved = True
+                
+                if return_stats:
+                    depth = len(path)
+                    stats['depth_stats'][depth] = stats['depth_stats'].get(depth, 0) + 1
+                    stats['memory_used'] += 1
+                
+                # Update statistics for moves tried
+                total_moves_tried += moves_tried_this_iteration
+                iterations_with_improvement += 1
+                break
+        
+        # If no improvement found after trying all moves, we're stuck at a local optimum
+        if not improved:
+            break
+    
+    # If goal is reached, return path
+    if current_state == goal_state:
+        end_time = time.time()
+        if return_stats:
+            # Calculate average moves tried before finding improvement
+            if iterations_with_improvement > 0:
+                stats['moves_tried_avg'] = total_moves_tried / iterations_with_improvement
+            return path, nodes_visited, end_time - start_time, stats
+        return path, nodes_visited, end_time - start_time
+    
+    # No path found
+    if return_stats:
+        # Calculate average moves tried before finding improvement
+        if iterations_with_improvement > 0:
+            stats['moves_tried_avg'] = total_moves_tried / iterations_with_improvement
+        return None, nodes_visited, time.time() - start_time, stats
+    return None, nodes_visited, time.time() - start_time
+
 def solve_3x3(start_state, algorithm="a_star", time_limit=30, return_stats=False):
     """
     Solve 3x3 Rubik's cube using specified algorithm
