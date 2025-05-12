@@ -5,9 +5,12 @@ from rubik_3x3 import RubikCube
 from rubik_2x2 import RubikCube2x2
 import time
 import random
+import pandas as pd
+import os
+import openpyxl
 from RubikState.rubik_solver import (
     a_star, bfs, dfs, ucs, ids, ida_star, greedy_best_first, 
-    hill_climbing_max, hill_climbing_random, pdb_astar,
+    hill_climbing_max, hill_climbing_random, pdb_astar, simple_hill_climbing,
     # Thêm các thuật toán mới
     simulated_annealing, genetic_algorithm, local_beam_search,
     and_or_graph_search, belief_states_search, ac3_search,
@@ -143,9 +146,18 @@ class ControlsWidget(QWidget):
         self.solution_moves.setFixedHeight(80)
         solution_layout.addWidget(self.solution_moves)
         
+        # Create a horizontal layout for buttons
+        solution_buttons_layout = QHBoxLayout()
+        
         apply_solution_btn = QPushButton("Áp dụng lời giải")
         apply_solution_btn.clicked.connect(self.apply_solution)
-        solution_layout.addWidget(apply_solution_btn)
+        solution_buttons_layout.addWidget(apply_solution_btn)
+        
+        export_btn = QPushButton("Export")
+        export_btn.clicked.connect(self.export_solution)
+        solution_buttons_layout.addWidget(export_btn)
+        
+        solution_layout.addLayout(solution_buttons_layout)
         
         solution_group.setLayout(solution_layout)
         top_left_layout.addWidget(solution_group)
@@ -232,8 +244,9 @@ class ControlsWidget(QWidget):
         local_layout = QVBoxLayout(local_tab)
         
         # Radio buttons
-        self.hill_climbing_max_radio = QRadioButton("Hill Climbing Max")
-        self.hill_climbing_random_radio = QRadioButton("Hill Climbing Random")
+        self.hill_climbing_max_radio = QRadioButton("Steepest Ascent Hill Climbing")
+        self.hill_climbing_random_radio = QRadioButton("Stochastic Hill Climbing")
+        self.simple_hill_climbing_radio = QRadioButton("Simple Hill Climbing")
         self.simulated_annealing_radio = QRadioButton("Simulated Annealing")
         self.genetic_algorithm_radio = QRadioButton("Genetic Algorithm")
         self.local_beam_search_radio = QRadioButton("Local Beam Search")
@@ -241,6 +254,7 @@ class ControlsWidget(QWidget):
         # Thêm vào button group
         self.algorithm_button_group.addButton(self.hill_climbing_max_radio, 7)
         self.algorithm_button_group.addButton(self.hill_climbing_random_radio, 8)
+        self.algorithm_button_group.addButton(self.simple_hill_climbing_radio, 9)
         self.algorithm_button_group.addButton(self.simulated_annealing_radio, 11)
         self.algorithm_button_group.addButton(self.genetic_algorithm_radio, 12)
         self.algorithm_button_group.addButton(self.local_beam_search_radio, 13)
@@ -248,6 +262,7 @@ class ControlsWidget(QWidget):
         # Thêm vào layout
         local_layout.addWidget(self.hill_climbing_max_radio)
         local_layout.addWidget(self.hill_climbing_random_radio)
+        local_layout.addWidget(self.simple_hill_climbing_radio)
         local_layout.addWidget(self.simulated_annealing_radio)
         local_layout.addWidget(self.genetic_algorithm_radio)
         local_layout.addWidget(self.local_beam_search_radio)
@@ -291,15 +306,15 @@ class ControlsWidget(QWidget):
         rl_layout.addStretch()
         
         # Thêm các tab vào tabwidget
-        algo_tabs.addTab(uninformed_tab, "Không thông tin")
-        algo_tabs.addTab(informed_tab, "Có thông tin")
-        algo_tabs.addTab(local_tab, "Tìm kiếm cục bộ")
-        algo_tabs.addTab(complex_tab, "Môi trường phức tạp")
-        algo_tabs.addTab(rl_tab, "RL (Học tăng cường)")
+        algo_tabs.addTab(uninformed_tab, "Uninformed Search")
+        algo_tabs.addTab(informed_tab, "Informed Search")
+        algo_tabs.addTab(local_tab, "Local Search")
+        algo_tabs.addTab(complex_tab, "Complex Environment")
+        algo_tabs.addTab(rl_tab, "Reinforcement Learning")
         
         # Cài đặt thời gian
         time_layout = QHBoxLayout()
-        time_layout.addWidget(QLabel("Giới hạn thời gian (giây):"))
+        time_layout.addWidget(QLabel("Time limit (seconds):"))
         self.time_limit_spin = QSpinBox()
         self.time_limit_spin.setRange(1, 300)
         self.time_limit_spin.setValue(120)
@@ -307,7 +322,7 @@ class ControlsWidget(QWidget):
         time_layout.addStretch()
         
         # Nút giải Rubik
-        solve_btn = QPushButton("Giải Rubik")
+        solve_btn = QPushButton("Solve Rubik's Cube")
         solve_btn.clicked.connect(self.solve_rubik)
         time_layout.addWidget(solve_btn)
         
@@ -316,40 +331,40 @@ class ControlsWidget(QWidget):
         bottom_layout.addLayout(time_layout)
         
         # === KẾT QUẢ GIẢI ===
-        result_group = QGroupBox("Kết quả giải")
+        result_group = QGroupBox("Solution Results")
         result_layout = QVBoxLayout()
         
         # Hiển thị trạng thái giải
         status_layout = QHBoxLayout()
-        status_layout.addWidget(QLabel("Trạng thái:"))
-        self.solution_status = QLabel("Sẵn sàng")
+        status_layout.addWidget(QLabel("Status:"))
+        self.solution_status = QLabel("Ready")
         self.solution_status.setStyleSheet("font-weight: bold;")
         status_layout.addWidget(self.solution_status)
         result_layout.addLayout(status_layout)
         
         # Thống kê cơ bản
         stats_layout = QGridLayout()
-        stats_layout.addWidget(QLabel("Thời gian:"), 0, 0)
-        self.solution_time = QLabel("0 giây")
+        stats_layout.addWidget(QLabel("Time:"), 0, 0)
+        self.solution_time = QLabel("0 seconds")
         stats_layout.addWidget(self.solution_time, 0, 1)
         
-        stats_layout.addWidget(QLabel("Số nút đã duyệt:"), 0, 2)
+        stats_layout.addWidget(QLabel("Nodes visited:"), 0, 2)
         self.nodes_visited = QLabel("0")
         stats_layout.addWidget(self.nodes_visited, 0, 3)
         
-        stats_layout.addWidget(QLabel("Độ dài lời giải:"), 1, 0)
+        stats_layout.addWidget(QLabel("Solution length:"), 1, 0)
         self.solution_length = QLabel("0")
         stats_layout.addWidget(self.solution_length, 1, 1)
         
-        stats_layout.addWidget(QLabel("Bộ nhớ sử dụng:"), 1, 2)
-        self.memory_usage = QLabel("0 trạng thái")
+        stats_layout.addWidget(QLabel("Memory usage:"), 1, 2)
+        self.memory_usage = QLabel("0 states")
         stats_layout.addWidget(self.memory_usage, 1, 3)
         
-        stats_layout.addWidget(QLabel("Hệ số phân nhánh:"), 2, 0)
+        stats_layout.addWidget(QLabel("Branching factor:"), 2, 0)
         self.branching_factor = QLabel("0")
         stats_layout.addWidget(self.branching_factor, 2, 1)
         
-        stats_layout.addWidget(QLabel("Tỷ lệ cắt tỉa:"), 2, 2)
+        stats_layout.addWidget(QLabel("Pruning ratio:"), 2, 2)
         self.pruning_ratio = QLabel("0%")
         stats_layout.addWidget(self.pruning_ratio, 2, 3)
         
@@ -373,8 +388,8 @@ class ControlsWidget(QWidget):
         heuristic_layout.addWidget(self.heuristic_stats)
         
         # Thêm tabs
-        analysis_tabs.addTab(stats_tab, "Thống kê chi tiết")
-        analysis_tabs.addTab(heuristic_tab, "Phân tích heuristic")
+        analysis_tabs.addTab(stats_tab, "Detailed Statistics")
+        analysis_tabs.addTab(heuristic_tab, "Heuristic Analysis")
         
         result_layout.addWidget(analysis_tabs)
         result_group.setLayout(result_layout)
@@ -537,8 +552,8 @@ class ControlsWidget(QWidget):
         self.rubik_widget.move_queue.clear()
         
         # Reset thông tin lời giải
-        self.solution_status.setText("Sẵn sàng")
-        self.solution_time.setText("0 giây")
+        self.solution_status.setText("Ready")
+        self.solution_time.setText("0 seconds")
         self.nodes_visited.setText("0")
         self.solution_length.setText("0")
         self.solution_moves.clear()
@@ -638,6 +653,7 @@ class ControlsWidget(QWidget):
                 "greedy_best_first": greedy_best_first,
                 "hill_climbing_max": hill_climbing_max,
                 "hill_climbing_random": hill_climbing_random,
+                "simple_hill_climbing": simple_hill_climbing,
                 "pdb_astar": pdb_astar,
                 "deepcube": lambda state, time_limit, return_stats: DeepCubeSolver().solve(state),
                 "pdb_2x2": lambda state, time_limit, return_stats: 
@@ -665,10 +681,10 @@ class ControlsWidget(QWidget):
             
             # Cập nhật UI
             self.solution_status.setText(f"Đang giải với thuật toán {algorithm_display_name}...")
-            self.solution_time.setText("0 giây")
+            self.solution_time.setText("0 seconds")
             self.nodes_visited.setText("0")
             self.solution_length.setText("0")
-            self.memory_usage.setText("0 trạng thái")
+            self.memory_usage.setText("0 states")
             self.branching_factor.setText("0")
             self.pruning_ratio.setText("0%")
             self.detailed_stats.setPlainText("")
@@ -686,7 +702,7 @@ class ControlsWidget(QWidget):
                 for layout in self.findChildren(QHBoxLayout):
                     for i in range(layout.count()):
                         item = layout.itemAt(i)
-                        if item.widget() and isinstance(item.widget(), QPushButton) and item.widget().text() == "Giải Rubik":
+                        if item.widget() and isinstance(item.widget(), QPushButton) and item.widget().text() == "Solve Rubik's Cube":
                             options_layout = layout
                             break
                 
@@ -709,7 +725,7 @@ class ControlsWidget(QWidget):
                 for layout in self.findChildren(QHBoxLayout):
                     for i in range(layout.count()):
                         item = layout.itemAt(i)
-                        if item.widget() and isinstance(item.widget(), QPushButton) and item.widget().text() == "Giải Rubik":
+                        if item.widget() and isinstance(item.widget(), QPushButton) and item.widget().text() == "Solve Rubik's Cube":
                             options_layout = layout
                             break
                 
@@ -722,7 +738,7 @@ class ControlsWidget(QWidget):
                             widget = layout.itemAt(i).widget()
                             if isinstance(widget, QSpinBox):
                                 has_spin = True
-                            elif isinstance(widget, QPushButton) and widget.text() == "Giải Rubik":
+                            elif isinstance(widget, QPushButton) and widget.text() == "Solve Rubik's Cube":
                                 has_solve_btn = True
                         if has_spin and has_solve_btn:
                             options_layout = layout
@@ -759,7 +775,8 @@ class ControlsWidget(QWidget):
             
         except Exception as e:
             self.solution_status.setText(f"Lỗi: {str(e)}")
-            self.progress_bar.setVisible(False)
+            if hasattr(self, 'progress_bar'):
+                self.progress_bar.setVisible(False)
             print(f"Lỗi khi giải Rubik: {e}")
     
     def get_algorithm_registry(self):
@@ -774,8 +791,8 @@ class ControlsWidget(QWidget):
             6: ("Greedy Best-First", "greedy_best_first"),
             7: ("Hill Climbing Max", "hill_climbing_max"),
             8: ("Hill Climbing Random", "hill_climbing_random"),
-            9: ("Pattern Database A*", "pdb_astar"),
-            10: ("DeepCubeA (3x3)", "deepcube"),
+            9: ("Simple Hill Climbing", "simple_hill_climbing"),
+            10: ("Pattern Database A*", "pdb_astar"),
             11: ("Simulated Annealing", "simulated_annealing"),
             12: ("Genetic Algorithm", "genetic_algorithm"),
             13: ("Local Beam Search", "local_beam_search"),
@@ -791,7 +808,7 @@ class ControlsWidget(QWidget):
     def update_progress(self):
         """Cập nhật thông tin tiến độ"""
         elapsed = time.time() - self.progress_start_time
-        self.solution_time.setText(f"{elapsed:.1f} giây")
+        self.solution_time.setText(f"{elapsed:.1f} seconds")
 
     def on_solution_found(self, path, nodes_visited, time_taken, stats):
         """Xử lý khi tìm thấy lời giải"""
@@ -807,13 +824,13 @@ class ControlsWidget(QWidget):
         
         # Cập nhật UI cơ bản
         self.solution_status.setText("Đã tìm thấy lời giải!")
-        self.solution_time.setText(f"{time_taken:.2f} giây")
+        self.solution_time.setText(f"{time_taken:.2f} seconds")
         self.nodes_visited.setText(f"{nodes_visited}")
         self.solution_length.setText(f"{len(path)}")
         
         # Cập nhật các thông số phân tích mới
         if 'memory_used' in stats:
-            self.memory_usage.setText(f"{stats['memory_used']} trạng thái")
+            self.memory_usage.setText(f"{stats['memory_used']} states")
         else:
             self.memory_usage.setText("Không có dữ liệu")
             
@@ -861,11 +878,11 @@ class ControlsWidget(QWidget):
     def on_progress_update(self, nodes_visited, elapsed_time, current_stats):
         """Cập nhật thông tin tiến độ từ thread"""
         self.nodes_visited.setText(f"{nodes_visited}")
-        self.solution_time.setText(f"{elapsed_time:.1f} giây")
+        self.solution_time.setText(f"{elapsed_time:.1f} seconds")
         
         # Cập nhật các thông số phân tích nếu có
         if 'memory_used' in current_stats:
-            self.memory_usage.setText(f"{current_stats['memory_used']} trạng thái")
+            self.memory_usage.setText(f"{current_stats['memory_used']} states")
             
         if 'effective_branching' in current_stats:
             self.branching_factor.setText(f"{current_stats['effective_branching']:.2f}")
@@ -997,3 +1014,157 @@ class ControlsWidget(QWidget):
         except Exception as e:
             print(f"Lỗi khi sử dụng DeepCube2x2Solver: {str(e)}")
             return None, 0, 0, {}
+
+    def export_solution(self):
+        """
+        Export solution steps to an Excel file with state indicators
+        """
+        if not hasattr(self, 'current_solution') or not self.current_solution:
+            QMessageBox.warning(self, "Không có lời giải", "Vui lòng giải Rubik trước khi xuất lời giải.")
+            return
+        
+        try:
+            # Lấy trạng thái hiện tại của khối Rubik
+            current_state = self.get_current_state()
+            if current_state is None:
+                QMessageBox.warning(self, "Lỗi", "Không thể lấy trạng thái Rubik hiện tại!")
+                return
+            
+            # Lấy dữ liệu lời giải từ solution_moves
+            solution_text = self.solution_moves.toPlainText()
+            if not solution_text.strip():
+                QMessageBox.warning(self, "Không có lời giải", "Không tìm thấy lời giải để xuất.")
+                return
+            
+            # Phân tích chuỗi lời giải
+            move_strings = []
+            
+            # Filter out any non-move text like "→" or descriptive labels
+            for move in solution_text.split():
+                if move and move not in ["→", "Lời", "giải:", "bước"]:
+                    move_strings.append(move)
+            
+            if not move_strings:
+                QMessageBox.warning(self, "Lỗi", "Không thể phân tích chuỗi lời giải.")
+                return
+            
+            # Tạo tên file với timestamp
+            from datetime import datetime
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename, _ = QFileDialog.getSaveFileName(
+                self, "Lưu lời giải", f"solution_{timestamp}.xlsx", "Excel Files (*.xlsx)"
+            )
+            
+            if not filename:
+                return  # Người dùng hủy lưu
+                
+            # Import thư viện MOVES cho việc áp dụng nước đi
+            from RubikState.rubik_2x2 import MOVES_2x2
+            from RubikState.rubik_chen import MOVES_3x3
+            moves_dict = MOVES_2x2 if self.is_2x2 else MOVES_3x3
+            
+            # Tạo dữ liệu cho file Excel - lưu trạng thái sau mỗi bước
+            data = []
+            
+            # Lưu trạng thái ban đầu
+            if self.is_2x2:
+                initial_data = {
+                    'STT': 0,
+                    'Nước đi': 'Initial',
+                    'CP (Corner Permutation)': str(current_state.cp),
+                    'CO (Corner Orientation)': str(current_state.co)
+                }
+                data.append(initial_data)
+            else:
+                initial_data = {
+                    'STT': 0,
+                    'Nước đi': 'Initial',
+                    'CP (Corner Permutation)': str(current_state.cp),
+                    'CO (Corner Orientation)': str(current_state.co),
+                    'EP (Edge Permutation)': str(current_state.ep),
+                    'EO (Edge Orientation)': str(current_state.eo)
+                }
+                data.append(initial_data)
+            
+            # Áp dụng từng nước đi và lưu trạng thái
+            state = current_state
+            for i, move_str in enumerate(move_strings, 1):
+                # Áp dụng nước đi vào trạng thái
+                state = state.apply_move(move_str, moves_dict)
+                
+                # Lưu trạng thái mới
+                if self.is_2x2:
+                    state_data = {
+                        'STT': i,
+                        'Nước đi': move_str,
+                        'CP (Corner Permutation)': str(state.cp),
+                        'CO (Corner Orientation)': str(state.co)
+                    }
+                else:
+                    state_data = {
+                        'STT': i,
+                        'Nước đi': move_str,
+                        'CP (Corner Permutation)': str(state.cp),
+                        'CO (Corner Orientation)': str(state.co),
+                        'EP (Edge Permutation)': str(state.ep),
+                        'EO (Edge Orientation)': str(state.eo)
+                    }
+                data.append(state_data)
+            
+            # Tạo DataFrame từ dữ liệu
+            df = pd.DataFrame(data)
+            
+            # Tạo Excel writer và định dạng
+            with pd.ExcelWriter(filename, engine='openpyxl') as writer:
+                # Write solution data
+                df.to_excel(writer, sheet_name='Trạng thái Rubik', index=False)
+                
+                # Định dạng file sau khi ghi
+                workbook = writer.book
+                worksheet = writer.sheets['Trạng thái Rubik']
+                
+                # Số cột thay đổi tùy vào loại Rubik
+                num_cols = 4 if self.is_2x2 else 6
+                
+                # Định dạng tiêu đề
+                for col in range(1, num_cols + 1):
+                    cell = worksheet.cell(row=1, column=col)
+                    cell.font = openpyxl.styles.Font(bold=True)
+                    cell.alignment = openpyxl.styles.Alignment(horizontal='center')
+                    cell.fill = openpyxl.styles.PatternFill(start_color="FFFF00", end_color="FFFF00", fill_type="solid")
+                
+                # Điều chỉnh độ rộng cột
+                worksheet.column_dimensions['A'].width = 5
+                worksheet.column_dimensions['B'].width = 10
+                worksheet.column_dimensions['C'].width = 25
+                worksheet.column_dimensions['D'].width = 25
+                if not self.is_2x2:
+                    worksheet.column_dimensions['E'].width = 25
+                    worksheet.column_dimensions['F'].width = 25
+                
+                # Add a summary sheet
+                summary_data = {
+                    'Thuộc tính': ['Loại Rubik', 'Số bước giải', 'Thuật toán sử dụng', 'Thời gian giải', 'Ghi chú'],
+                    'Giá trị': [
+                        '2x2' if self.is_2x2 else '3x3',
+                        len(move_strings),
+                        self.get_algorithm_registry()[self.algorithm_button_group.checkedId()][0],
+                        self.solution_time.text(),
+                        'File này chứa trạng thái của khối Rubik sau mỗi bước giải. Chỉ số CP, CO, EP, EO biểu diễn hoán vị và định hướng của các góc và cạnh.'
+                    ]
+                }
+                summary_df = pd.DataFrame(summary_data)
+                summary_df.to_excel(writer, sheet_name='Tổng quan', index=False)
+                
+                # Định dạng sheet tổng quan
+                worksheet = writer.sheets['Tổng quan']
+                worksheet.column_dimensions['A'].width = 20
+                worksheet.column_dimensions['B'].width = 50
+            
+            QMessageBox.information(self, "Xuất thành công", f"Lời giải và trạng thái đã được xuất ra file {filename}")
+            
+        except Exception as e:
+            QMessageBox.critical(self, "Lỗi khi xuất", f"Đã xảy ra lỗi: {str(e)}")
+            print(f"Lỗi khi export: {e}")
+    
+

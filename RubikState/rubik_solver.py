@@ -21,6 +21,7 @@ from RubikState.rubik_solver_2x2 import (
     ida_star_search_2x2,
     hill_climbing_max_search_2x2,
     hill_climbing_random_search_2x2,
+    simple_hill_climbing_search_2x2,
     simulated_annealing_search_2x2,
     genetic_algorithm_search_2x2,
     local_beam_search_2x2,
@@ -42,6 +43,7 @@ from RubikState.rubik_solver_3x3 import (
     ida_star_search_3x3,
     hill_climbing_max_search_3x3,
     hill_climbing_random_search_3x3,
+    simple_hill_climbing_search_3x3,
     simulated_annealing_search_3x3,
     genetic_algorithm_search_3x3,
     local_beam_search_3x3,
@@ -120,10 +122,22 @@ def hill_climbing_max(state, time_limit=30, return_stats=False):
     return hill_climbing_max_search_3x3(state, time_limit=time_limit, return_stats=return_stats)
 
 def hill_climbing_random(state, time_limit=30, return_stats=False):
-    """Hill Climbing Random algorithm for any Rubik's cube (auto detects type)"""
+    """Wrapper function for hill_climbing_random_search algorithm"""
     if isinstance(state, Rubik2x2State):
+        from RubikState.rubik_solver_2x2 import hill_climbing_random_search_2x2
         return hill_climbing_random_search_2x2(state, time_limit=time_limit, return_stats=return_stats)
-    return hill_climbing_random_search_3x3(state, time_limit=time_limit, return_stats=return_stats)
+    else:
+        from RubikState.rubik_solver_3x3 import hill_climbing_random_search_3x3
+        return hill_climbing_random_search_3x3(state, time_limit=time_limit, return_stats=return_stats)
+
+def simple_hill_climbing(state, time_limit=30, return_stats=False):
+    """Wrapper function for simple_hill_climbing_search algorithm"""
+    if isinstance(state, Rubik2x2State):
+        from RubikState.rubik_solver_2x2 import simple_hill_climbing_search_2x2
+        return simple_hill_climbing_search_2x2(state, time_limit=time_limit, return_stats=return_stats)
+    else:
+        from RubikState.rubik_solver_3x3 import simple_hill_climbing_search_3x3
+        return simple_hill_climbing_search_3x3(state, time_limit=time_limit, return_stats=return_stats)
 
 def simulated_annealing(state, time_limit=30, return_stats=False):
     """Simulated Annealing algorithm for any Rubik's cube (auto detects type)"""
