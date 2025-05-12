@@ -326,9 +326,20 @@ class ControlsWidget(QWidget):
         solve_btn.clicked.connect(self.solve_rubik)
         time_layout.addWidget(solve_btn)
         
+        # Layout cho nút so sánh thuật toán
+        compare_layout = QHBoxLayout()
+        compare_layout.addStretch()
+        
+        # Nút so sánh các thuật toán
+        compare_btn = QPushButton("Compare Algorithms")
+        compare_btn.clicked.connect(self.compare_algorithms)
+        compare_btn.setToolTip("So sánh hiệu suất của các thuật toán trên trạng thái Rubik hiện tại")
+        compare_layout.addWidget(compare_btn)
+        
         # Thêm vào layout dưới
         bottom_layout.addWidget(algo_tabs)
         bottom_layout.addLayout(time_layout)
+        bottom_layout.addLayout(compare_layout)
         
         # === KẾT QUẢ GIẢI ===
         result_group = QGroupBox("Solution Results")
@@ -1167,4 +1178,596 @@ class ControlsWidget(QWidget):
             QMessageBox.critical(self, "Lỗi khi xuất", f"Đã xảy ra lỗi: {str(e)}")
             print(f"Lỗi khi export: {e}")
     
+    def compare_algorithms(self):
+        """So sánh các thuật toán trên trạng thái Rubik hiện tại và xuất báo cáo"""
+        # Lấy trạng thái Rubik hiện tại
+        current_state = self.get_current_state()
+        if current_state is None:
+            QMessageBox.warning(self, "Lỗi", "Không thể lấy trạng thái Rubik hiện tại!")
+            return
+            
+        # Xác định rubik là 2x2 hay 3x3
+        rubik_type = "2x2" if self.is_2x2 else "3x3"
+        
+        # Lấy danh sách tất cả các thuật toán để so sánh
+        algorithm_registry = self.get_algorithm_registry()
+        
+        if self.is_2x2:
+            # Với Rubik 2x2, bao gồm tất cả các thuật toán
+            algorithms_to_compare = [
+                0,  # BFS
+                1,  # DFS
+                2,  # UCS
+                3,  # IDS
+                4,  # A*
+                5,  # IDA*
+                6,  # Greedy Best-First
+                7,  # Hill Climbing Max
+                8,  # Hill Climbing Random
+                9,  # Simple Hill Climbing
+                10, # Pattern Database A*
+                11, # Simulated Annealing
+                12, # Genetic Algorithm
+                13, # Local Beam Search
+                14, # AND-OR Graph Search
+                15, # Belief States
+                16, # AC-3
+                17, # Backtracking 1
+                18, # Backtracking 2
+                19, # Pattern Database (2x2)
+                20  # DeepCubeA (2x2)
+            ]
+            
+            # Thông báo cho người dùng về thời gian chạy cho Rubik 2x2
+            reply = QMessageBox.question(
+                self, 
+                "Xác nhận so sánh",
+                "So sánh tất cả các thuật toán trên Rubik 2x2 có thể mất nhiều thời gian. Tiếp tục?",
+                QMessageBox.Yes | QMessageBox.No, 
+                QMessageBox.No
+            )
+        else:
+            # Với Rubik 3x3, loại bỏ các thuật toán chỉ dành cho 2x2
+            algorithms_to_compare = [
+                0,  # BFS
+                1,  # DFS
+                2,  # UCS
+                3,  # IDS
+                4,  # A*
+                5,  # IDA* 
+                6,  # Greedy Best-First
+                7,  # Hill Climbing Max
+                8,  # Hill Climbing Random
+                9,  # Simple Hill Climbing
+                10, # Pattern Database A*
+                11, # Simulated Annealing
+                12, # Genetic Algorithm
+                13, # Local Beam Search
+                14, # AND-OR Graph Search
+                15, # Belief States
+                16, # AC-3
+                17, # Backtracking 1
+                18  # Backtracking 2
+            ]
+            
+            # Thông báo cảnh báo mạnh mẽ hơn cho Rubik 3x3
+            reply = QMessageBox.warning(
+                self, 
+                "Cảnh báo - So sánh các thuật toán",
+                "So sánh TẤT CẢ các thuật toán trên Rubik 3x3 sẽ MẤT RẤT NHIỀU THỜI GIAN và có thể làm chương trình không phản hồi.\n\n" +
+                "Một số thuật toán như DFS có thể không bao giờ tìm ra kết quả trong thời gian hợp lý.\n\n" +
+                "Bạn có chắc chắn muốn tiếp tục?",
+                QMessageBox.Yes | QMessageBox.No, 
+                QMessageBox.No
+            )
+            
+        # Kiểm tra phản hồi người dùng
+        if reply == QMessageBox.No:
+            return
+        
+        # Tạo progress dialog với nhiều thông tin hơn
+        progress = QProgressDialog("Đang chuẩn bị so sánh các thuật toán...", "Hủy", 0, len(algorithms_to_compare), self)
+        progress.setWindowTitle("Đang so sánh thuật toán")
+        progress.setWindowModality(Qt.WindowModal)
+        progress.setMinimumWidth(400)  # Đặt chiều rộng tối thiểu để nhìn rõ thông tin
+        progress.show()
+        
+        # Lưu kết quả so sánh
+        comparison_results = []
+        
+        # Đếm số thuật toán đã tìm được lời giải
+        algorithms_with_solution = 0
+        
+        # Ánh xạ thuật toán ID với hàm
+        algorithm_funcs = {
+            "bfs": bfs,
+            "dfs": dfs,
+            "ucs": ucs,
+            "ids": ids,
+            "a_star": a_star,
+            "ida_star": ida_star,
+            "greedy_best_first": greedy_best_first,
+            "hill_climbing_max": hill_climbing_max,
+            "hill_climbing_random": hill_climbing_random,
+            "simple_hill_climbing": simple_hill_climbing,
+            "pdb_astar": pdb_astar,
+            "deepcube": lambda state, time_limit, return_stats: DeepCubeSolver().solve(state),
+            "pdb_2x2": lambda state, time_limit, return_stats: self.wrap_pdb_2x2_solver(state, time_limit),
+            "deepcube_2x2": lambda state, time_limit, return_stats: self.wrap_deepcube_2x2_solver(state, time_limit),
+            "simulated_annealing": simulated_annealing,
+            "genetic_algorithm": genetic_algorithm,
+            "local_beam_search": local_beam_search,
+            "and_or_search": and_or_graph_search,
+            "belief_states": belief_states_search,
+            "ac3": ac3_search,
+            "backtracking_1": backtracking_search_strategy1,
+            "backtracking_2": backtracking_search_strategy2,
+        }
+        
+        # Lấy time limit từ spinbox
+        time_limit = self.time_limit_spin.value()
+        
+        # Đặt thời gian giới hạn cho mỗi thuật toán (mặc định 30 giây nếu không có spinbox)
+        if not hasattr(self, 'time_limit_spin'):
+            time_limit = 30
+        
+        # Lặp qua từng thuật toán để thực hiện so sánh
+        for i, algo_id in enumerate(algorithms_to_compare):
+            # Cập nhật progress dialog
+            progress.setValue(i)
+            if progress.wasCanceled():
+                break
+                
+            # Lấy tên và hàm thuật toán
+            if algo_id not in algorithm_registry:
+                continue
+                
+            algorithm_display_name, algorithm_name = algorithm_registry[algo_id]
+            progress.setLabelText(f"Đang chạy thuật toán ({i+1}/{len(algorithms_to_compare)}): {algorithm_display_name}")
+            
+            # Hiển thị ước tính thời gian còn lại
+            if i > 0:
+                avg_time_per_algo = (time.time() - start_time) / i
+                remaining_time = avg_time_per_algo * (len(algorithms_to_compare) - i)
+                progress.setLabelText(f"Đang chạy thuật toán ({i+1}/{len(algorithms_to_compare)}): {algorithm_display_name}\nThời gian còn lại: {remaining_time:.1f} giây")
+            
+            # Kiểm tra nếu hàm thuật toán tồn tại
+            if algorithm_name not in algorithm_funcs:
+                comparison_results.append({
+                    "Algorithm": algorithm_display_name,
+                    "Found Solution": "N/A",
+                    "Time (s)": "N/A",
+                    "Nodes Visited": "N/A",
+                    "Solution Length": "N/A",
+                    "Memory Usage": "N/A",
+                    "Effective Branching": "N/A",
+                    "Time Complexity": "N/A",
+                    "Space Complexity": "N/A"
+                })
+                continue
+                
+            # Tạo bản sao trạng thái để đảm bảo mỗi thuật toán chạy trên cùng một trạng thái
+            state_copy = current_state
+            
+            try:
+                # Chạy thuật toán
+                QCoreApplication.processEvents()  # Cập nhật UI để đảm bảo progress dialog hiển thị
+                algorithm_func = algorithm_funcs[algorithm_name]
+                
+                # Bắt đầu đo thời gian
+                start_time = time.time()
+                
+                # Chạy thuật toán với time limit
+                result = algorithm_func(state_copy, time_limit=time_limit, return_stats=True)
+                
+                # Kiểm tra định dạng kết quả
+                if len(result) == 4:  # Định dạng mới (path, nodes_visited, time_taken, stats)
+                    path, nodes_visited, time_taken, stats = result
+                else:  # Định dạng cũ (path, nodes_visited, time_taken)
+                    path, nodes_visited, time_taken = result
+                    stats = {}  # Dict trống cho các thuật toán cũ
+                
+                # Thêm kết quả vào danh sách so sánh
+                found_solution = "Yes" if path else "No"
+                solution_length = len(path) if path else "N/A"
+                
+                # Lấy thông tin về độ phức tạp thuật toán
+                time_complexity = self.get_time_complexity(algorithm_name)
+                space_complexity = self.get_space_complexity(algorithm_name)
+                
+                memory_usage = stats.get('memory_used', "N/A")
+                effective_branching = f"{stats.get('effective_branching', 'N/A')}"
+                if effective_branching != "N/A":
+                    effective_branching = f"{float(effective_branching):.2f}"
+                
+                result_data = {
+                    "Algorithm": algorithm_display_name,
+                    "Found Solution": found_solution,
+                    "Time (s)": f"{time_taken:.2f}" if found_solution == "Yes" else f"{time_limit}+",
+                    "Nodes Visited": nodes_visited,
+                    "Solution Length": solution_length,
+                    "Memory Usage": memory_usage,
+                    "Effective Branching": effective_branching,
+                    "Time Complexity": time_complexity,
+                    "Space Complexity": space_complexity
+                }
+                
+                comparison_results.append(result_data)
+                
+                # Cập nhật đếm số thuật toán thành công
+                if found_solution == "Yes":
+                    algorithms_with_solution += 1
+                
+            except Exception as e:
+                print(f"Lỗi khi chạy thuật toán {algorithm_display_name}: {e}")
+                comparison_results.append({
+                    "Algorithm": algorithm_display_name,
+                    "Found Solution": "Error",
+                    "Time (s)": "N/A",
+                    "Nodes Visited": "N/A",
+                    "Solution Length": "N/A",
+                    "Memory Usage": "N/A",
+                    "Effective Branching": "N/A",
+                    "Time Complexity": time_complexity if 'time_complexity' in locals() else "N/A",
+                    "Space Complexity": space_complexity if 'space_complexity' in locals() else "N/A"
+                })
+        
+        # Đóng progress dialog
+        progress.setValue(len(algorithms_to_compare))
+        
+        # Hiển thị thông tin tóm tắt kết quả và một số phân tích
+        summary_text = f"<h3>Kết quả so sánh thuật toán:</h3>"
+        summary_text += f"<p><b>• Tổng số thuật toán đã thử:</b> {len(algorithms_to_compare)}<br>"
+        summary_text += f"<b>• Số thuật toán tìm thấy lời giải:</b> {algorithms_with_solution}<br>"
+        summary_text += f"<b>• Số thuật toán không tìm thấy lời giải:</b> {len(algorithms_to_compare) - algorithms_with_solution}</p>"
+        
+        # Thêm phân tích nhanh cho các thuật toán tìm được lời giải
+        if algorithms_with_solution > 0:
+            # Lọc ra các thuật toán có lời giải
+            solved_algorithms = [r for r in comparison_results if r["Found Solution"] == "Yes"]
+            
+            # Tìm thuật toán nhanh nhất
+            fastest_algo = min(solved_algorithms, key=lambda x: float(x["Time (s)"]) if x["Time (s)"] != "N/A" else float('inf'))
+            
+            # Tìm thuật toán có độ dài lời giải ngắn nhất
+            shortest_path_algo = min(solved_algorithms, 
+                                    key=lambda x: int(x["Solution Length"]) if x["Solution Length"] != "N/A" else float('inf'))
+            
+            # Hiển thị thông tin phân tích
+            summary_text += f"<h4>Phân tích thuật toán:</h4>"
+            summary_text += f"<p><b>• Thuật toán nhanh nhất:</b> {fastest_algo['Algorithm']} ({fastest_algo['Time (s)']} giây)<br>"
+            summary_text += f"<b>• Thuật toán có lời giải ngắn nhất:</b> {shortest_path_algo['Algorithm']} ({shortest_path_algo['Solution Length']} bước)<br></p>"
+        
+        # Tạo dialog để hiển thị kết quả chi tiết
+        results_dialog = QDialog(self)
+        results_dialog.setWindowTitle("Kết quả so sánh thuật toán")
+        results_dialog.setMinimumWidth(600)
+        results_dialog.setMinimumHeight(400)
+        
+        # Layout cho dialog
+        dialog_layout = QVBoxLayout()
+        
+        # Hiển thị tóm tắt
+        summary_label = QLabel(summary_text)
+        summary_label.setTextFormat(Qt.RichText)
+        dialog_layout.addWidget(summary_label)
+        
+        # Hiển thị bảng kết quả chi tiết
+        results_table = QTableWidget()
+        results_table.setRowCount(len(comparison_results))
+        results_table.setColumnCount(7)  # Giảm số cột để nhìn rõ hơn
+        
+        # Đặt tiêu đề cho bảng
+        results_table.setHorizontalHeaderLabels([
+            "Thuật toán", "Tìm thấy lời giải", "Thời gian (s)", 
+            "Số node thăm", "Độ dài lời giải", "Bộ nhớ sử dụng", 
+            "Hệ số phân nhánh"
+        ])
+        
+        # Thêm dữ liệu vào bảng
+        for row, result in enumerate(comparison_results):
+            results_table.setItem(row, 0, QTableWidgetItem(result["Algorithm"]))
+            results_table.setItem(row, 1, QTableWidgetItem(result["Found Solution"]))
+            results_table.setItem(row, 2, QTableWidgetItem(str(result["Time (s)"])))
+            results_table.setItem(row, 3, QTableWidgetItem(str(result["Nodes Visited"])))
+            results_table.setItem(row, 4, QTableWidgetItem(str(result["Solution Length"])))
+            results_table.setItem(row, 5, QTableWidgetItem(str(result["Memory Usage"])))
+            results_table.setItem(row, 6, QTableWidgetItem(str(result["Effective Branching"])))
+            
+            # Tô màu cho các hàng có tìm thấy lời giải
+            if result["Found Solution"] == "Yes":
+                for col in range(7):
+                    item = results_table.item(row, col)
+                    item.setBackground(QColor(200, 255, 200))  # Màu xanh nhạt
+        
+        # Điều chỉnh kích thước cột
+        results_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        results_table.setEditTriggers(QTableWidget.NoEditTriggers)  # Vô hiệu hóa sửa trực tiếp
+        
+        dialog_layout.addWidget(results_table)
+        
+        # Các nút điều khiển
+        buttons_layout = QHBoxLayout()
+        export_btn = QPushButton("Xuất ra Excel")
+        export_btn.clicked.connect(lambda: self.export_comparison_results(comparison_results, rubik_type))
+        
+        close_btn = QPushButton("Đóng")
+        close_btn.clicked.connect(results_dialog.accept)
+        
+        buttons_layout.addWidget(export_btn)
+        buttons_layout.addWidget(close_btn)
+        dialog_layout.addLayout(buttons_layout)
+        
+        results_dialog.setLayout(dialog_layout)
+        results_dialog.exec_()
+    
+    def get_time_complexity(self, algorithm_name):
+        """Trả về độ phức tạp thời gian của thuật toán"""
+        complexities = {
+            "bfs": "O(b^d)",
+            "dfs": "O(b^m)",
+            "ucs": "O(b^{C*/ε})",
+            "ids": "O(b^d)",
+            "a_star": "O(b^d)",
+            "ida_star": "O(b^d)",
+            "greedy_best_first": "O(b^m)",
+            "hill_climbing_max": "O(b*m)",
+            "hill_climbing_random": "O(b*m)",
+            "simple_hill_climbing": "O(b*m)",
+            "pdb_astar": "O(b^(d*h(n)))",
+            "deepcube": "O(1) [inference]",
+            "pdb_2x2": "O(1) [lookup]",
+            "deepcube_2x2": "O(1) [inference]",
+            "simulated_annealing": "O(n)",
+            "genetic_algorithm": "O(p*g)",
+            "local_beam_search": "O(k*b*m)",
+            "and_or_search": "O(b^m)",
+            "belief_states": "O(|S|^2)",
+            "ac3": "O(n^2*d^3)",
+            "backtracking_1": "O(d^n)",
+            "backtracking_2": "O(d^n)"
+        }
+        return complexities.get(algorithm_name, "N/A")
+    
+    def get_space_complexity(self, algorithm_name):
+        """Trả về độ phức tạp không gian của thuật toán"""
+        complexities = {
+            "bfs": "O(b^d)",
+            "dfs": "O(b*m)",
+            "ucs": "O(b^{C*/ε})",
+            "ids": "O(b*d)",
+            "a_star": "O(b^d)",
+            "ida_star": "O(b*d)",
+            "greedy_best_first": "O(b^m)",
+            "hill_climbing_max": "O(b)",
+            "hill_climbing_random": "O(b)",
+            "simple_hill_climbing": "O(b)",
+            "pdb_astar": "O(b^d) + PDB",
+            "deepcube": "O(model size)",
+            "pdb_2x2": "O(PDB size)",
+            "deepcube_2x2": "O(model size)",
+            "simulated_annealing": "O(1)",
+            "genetic_algorithm": "O(p)",
+            "local_beam_search": "O(k)",
+            "and_or_search": "O(b^m)",
+            "belief_states": "O(|S|)",
+            "ac3": "O(n^2*d^2)",
+            "backtracking_1": "O(n)",
+            "backtracking_2": "O(n)"
+        }
+        return complexities.get(algorithm_name, "N/A")
+    
+    def export_comparison_results(self, comparison_results, rubik_type):
+        """Xuất kết quả so sánh ra file Excel"""
+        if not comparison_results:
+            QMessageBox.warning(self, "Không có kết quả", "Không có kết quả so sánh nào để xuất!")
+            return
+            
+        try:
+            # Lấy trạng thái hiện tại của Rubik
+            current_state = self.get_current_state()
+            if current_state is None:
+                QMessageBox.warning(self, "Lỗi", "Không thể lấy trạng thái Rubik hiện tại!")
+                return
+            
+            # Tạo tên file với timestamp
+            from datetime import datetime
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename, _ = QFileDialog.getSaveFileName(
+                self, "Lưu kết quả so sánh", f"algorithm_comparison_{rubik_type}_{timestamp}.xlsx", "Excel Files (*.xlsx)"
+            )
+            
+            if not filename:
+                return  # Người dùng hủy lưu
+                
+            # Tạo DataFrame từ kết quả
+            df = pd.DataFrame(comparison_results)
+            
+            # Tạo Excel writer với định dạng
+            with pd.ExcelWriter(filename, engine='openpyxl') as writer:
+                # Ghi dữ liệu
+                df.to_excel(writer, sheet_name='Kết quả so sánh', index=False)
+                
+                # Định dạng file
+                workbook = writer.book
+                worksheet = writer.sheets['Kết quả so sánh']
+                
+                # Định dạng tiêu đề
+                for col_num, col_name in enumerate(df.columns, 1):
+                    cell = worksheet.cell(row=1, column=col_num)
+                    cell.font = openpyxl.styles.Font(bold=True)
+                    cell.alignment = openpyxl.styles.Alignment(horizontal='center')
+                    cell.fill = openpyxl.styles.PatternFill(start_color="FFFF00", end_color="FFFF00", fill_type="solid")
+                
+                # Điều chỉnh độ rộng cột
+                for col_num, col_name in enumerate(df.columns, 1):
+                    column_width = max(len(str(col_name)) + 2, max(len(str(df.iloc[i][col_name])) for i in range(len(df))) + 2)
+                    worksheet.column_dimensions[openpyxl.utils.get_column_letter(col_num)].width = min(column_width, 30)
+                
+                # Điều chỉnh fontSize cột đầu tiên (Algorithm)
+                for row_num in range(2, len(df) + 2):
+                    cell = worksheet.cell(row=row_num, column=1)
+                    cell.font = openpyxl.styles.Font(bold=True)
+                    
+                    # Tô màu các hàng có lời giải thành công
+                    if df.iloc[row_num-2]["Found Solution"] == "Yes":
+                        for col_num in range(1, len(df.columns) + 1):
+                            cell = worksheet.cell(row=row_num, column=col_num)
+                            cell.fill = openpyxl.styles.PatternFill(
+                                start_color="E2EFDA", 
+                                end_color="E2EFDA", 
+                                fill_type="solid"
+                            )
+                    
+                    # Tô màu các hàng có lỗi
+                    if df.iloc[row_num-2]["Found Solution"] == "Error":
+                        for col_num in range(1, len(df.columns) + 1):
+                            cell = worksheet.cell(row=row_num, column=col_num)
+                            cell.fill = openpyxl.styles.PatternFill(
+                                start_color="FFCCCC", 
+                                end_color="FFCCCC", 
+                                fill_type="solid"
+                            )
+                
+                # Thêm sheet thông tin về trạng thái Rubik
+                if self.is_2x2:
+                    state_info = {
+                        "Property": ["Rubik Type", "Corner Permutation (CP)", "Corner Orientation (CO)"],
+                        "Value": [
+                            "2x2",
+                            str(current_state.cp),
+                            str(current_state.co)
+                        ]
+                    }
+                else:
+                    state_info = {
+                        "Property": ["Rubik Type", "Corner Permutation (CP)", "Corner Orientation (CO)", 
+                                    "Edge Permutation (EP)", "Edge Orientation (EO)"],
+                        "Value": [
+                            "3x3",
+                            str(current_state.cp),
+                            str(current_state.co),
+                            str(current_state.ep),
+                            str(current_state.eo)
+                        ]
+                    }
+                state_df = pd.DataFrame(state_info)
+                state_df.to_excel(writer, sheet_name='Trạng thái Rubik', index=False)
+                
+                # Định dạng sheet trạng thái
+                ws_state = writer.sheets['Trạng thái Rubik']
+                ws_state.column_dimensions['A'].width = 25
+                ws_state.column_dimensions['B'].width = 50
+                
+                # Thêm sheet giải thích
+                explanation = {
+                    "Term": [
+                        "Time Complexity", 
+                        "Space Complexity", 
+                        "b", 
+                        "d", 
+                        "m", 
+                        "n",
+                        "p",
+                        "g",
+                        "k",
+                        "PDB",
+                        "|S|"
+                    ],
+                    "Description": [
+                        "Tăng trưởng thời gian thực thi theo kích thước đầu vào",
+                        "Tăng trưởng bộ nhớ cần thiết theo kích thước đầu vào",
+                        "Hệ số phân nhánh (số nước đi có thể từ mỗi trạng thái)",
+                        "Độ sâu của lời giải tối ưu",
+                        "Độ sâu tối đa của không gian tìm kiếm",
+                        "Số biến số (trong Rubik là số viên)",
+                        "Kích thước quần thể trong thuật toán di truyền",
+                        "Số thế hệ trong thuật toán di truyền",
+                        "Số beam trong local beam search",
+                        "Pattern Database - CSDL mẫu đã tính sẵn",
+                        "Kích thước không gian trạng thái"
+                    ]
+                }
+                explanation_df = pd.DataFrame(explanation)
+                explanation_df.to_excel(writer, sheet_name='Giải thích', index=False)
+                
+                # Thêm sheet phân tích dữ liệu và biểu đồ
+                # Tạo dataframe chỉ chứa thuật toán thành công
+                successful_df = df[df["Found Solution"] == "Yes"].copy()
+                
+                if not successful_df.empty:
+                    # Chuyển cột thời gian và số node thành số
+                    successful_df["Time (s)"] = successful_df["Time (s)"].astype(float)
+                    
+                    # Sắp xếp theo thời gian tăng dần
+                    successful_df = successful_df.sort_values("Time (s)")
+                    
+                    # Tạo dataframe cho biểu đồ
+                    chart_data = {
+                        "Algorithm": successful_df["Algorithm"].tolist(),
+                        "Time (s)": successful_df["Time (s)"].tolist(),
+                        "Solution Length": successful_df["Solution Length"].astype(str).astype(float).tolist()
+                    }
+                    chart_df = pd.DataFrame(chart_data)
+                    
+                    # Ghi ra sheet phân tích
+                    chart_df.to_excel(writer, sheet_name='Phân tích', index=False)
+                    
+                    # Tạo thêm bảng xếp hạng
+                    ranking_data = {
+                        "Tiêu chí": [
+                            "Thuật toán nhanh nhất",
+                            "Thuật toán có lời giải ngắn nhất",
+                            "Thuật toán sử dụng ít node nhất",
+                            "Thuật toán có hệ số phân nhánh thấp nhất"
+                        ],
+                        "Thuật toán": [
+                            successful_df.iloc[0]["Algorithm"],
+                            successful_df.sort_values("Solution Length").iloc[0]["Algorithm"],
+                            successful_df.sort_values("Nodes Visited").iloc[0]["Algorithm"],
+                            "N/A"  # Mặc định
+                        ],
+                        "Giá trị": [
+                            f"{successful_df.iloc[0]['Time (s)']} giây",
+                            f"{successful_df.sort_values('Solution Length').iloc[0]['Solution Length']} bước",
+                            f"{successful_df.sort_values('Nodes Visited').iloc[0]['Nodes Visited']} nodes",
+                            "N/A"  # Mặc định
+                        ]
+                    }
+                    
+                    # Định dạng sheet phân tích
+                    ws_analysis = writer.sheets['Phân tích']
+                    
+                    # Thêm bảng xếp hạng vào sheet phân tích
+                    ranking_df = pd.DataFrame(ranking_data)
+                    ranking_df.to_excel(writer, sheet_name='Xếp hạng', index=False)
+                    
+                    # Định dạng sheet xếp hạng
+                    ws_ranking = writer.sheets['Xếp hạng']
+                    ws_ranking.column_dimensions['A'].width = 30
+                    ws_ranking.column_dimensions['B'].width = 30
+                    ws_ranking.column_dimensions['C'].width = 20
+                    
+                    # Tô màu cho header
+                    for col_num in range(1, 4):
+                        cell = ws_ranking.cell(row=1, column=col_num)
+                        cell.font = openpyxl.styles.Font(bold=True)
+                        cell.fill = openpyxl.styles.PatternFill(
+                            start_color="4472C4", 
+                            end_color="4472C4", 
+                            fill_type="solid"
+                        )
+                        cell.font = openpyxl.styles.Font(bold=True, color="FFFFFF")
+                
+                # Định dạng sheet giải thích
+                ws_explain = writer.sheets['Giải thích']
+                ws_explain.column_dimensions['A'].width = 20
+                ws_explain.column_dimensions['B'].width = 70
+            
+            QMessageBox.information(self, "Xuất thành công", f"Kết quả so sánh đã được xuất ra file {filename}")
+            
+        except Exception as e:
+            QMessageBox.critical(self, "Lỗi khi xuất", f"Đã xảy ra lỗi: {str(e)}")
+            print(f"Lỗi khi export: {e}")
+
 
