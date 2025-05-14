@@ -331,6 +331,28 @@ Mô hình DeepCubeA dựa trên kiến trúc học tăng cường sâu:
 | 15 bước | 27.5s / tối ưu | 2.5s / +1.3 bước | 5.8s / +2.5 bước |
 | 20 bước | >300s / NA | 4.7s / +2.1 bước | 10.3s / +3.7 bước |
 
+### 4.3. Kết quả trực quan
+
+#### 4.3.1. So sánh kết quả giải khối Rubik 2x2
+![Rubik 2x2 Solver Results](rubik_2x2_solver_results.png)
+
+#### 4.3.2. So sánh kết quả giải khối Rubik 3x3
+![Rubik 3x3 Solver Results](rubik_solver_results.png)
+
+#### 4.3.3. Trực quan hóa thuật toán tìm kiếm không thông tin
+##### Rubik 2x2
+![Uninformed Search for 2x2 Rubik's Cube](visualizations/2x2_uninformed_search.png)
+
+##### Rubik 3x3
+![Uninformed Search for 3x3 Rubik's Cube](visualizations/3x3_uninformed_search.png)
+
+#### 4.3.4. Trực quan hóa thuật toán tìm kiếm có thông tin
+##### Rubik 2x2
+![Informed Search for 2x2 Rubik's Cube](visualizations/2x2_informed_search.png)
+
+##### Rubik 3x3
+![Informed Search for 3x3 Rubik's Cube](visualizations/3x3_informed_search.png)
+
 ![Giao diện phần mềm](https://github.com/vienbn1998/Rubik_all_in_one/raw/main/screenshots/main_interface.png)
 
 ## 5. Kết luận
@@ -379,4 +401,4 @@ Dự án "3D Rubik Simulator & Solver" đã thành công trong việc:
 * Phan Quốc Viễn - 23110362
 * Nguyễn Nhật Huy - 23110226
 
-**Giảng viên hướng dẫn:** [Tên giảng viên]
+**Giảng viên hướng dẫn:** [ThS. Phan Thị Huyền Trang]
