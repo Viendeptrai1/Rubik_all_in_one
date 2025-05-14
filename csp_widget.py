@@ -2,7 +2,7 @@ import random
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, 
                             QPushButton, QLabel, QRadioButton, QButtonGroup,
                             QGroupBox, QTextEdit, QComboBox, QSplitter, QDialog, QDialogButtonBox,
-                            QSpinBox, QFormLayout)
+                            QSpinBox, QFormLayout, QTableWidget, QTableWidgetItem, QHeaderView)
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont, QColor
 from RubikState.rubik_chen import RubikState, SOLVED_STATE_3x3, MOVES_3x3
@@ -31,7 +31,7 @@ class CSPWidget(QWidget):
         problem_text.setMaximumHeight(120)
         problem_text.setHtml("""
         <div style='font-size: 12px; text-align: justify; margin: 5px;'>
-            <p><b>Phát biểu bài toán:</b> Xác định tính hợp lệ của một cấu hình Rubik bằng cách mô hình hóa dưới dạng bài toán thỏa mãn ràng buộc (CSP).</p>
+            <p><b>Phát biểu bài toán:</b> Giải bài toán CSP cho Rubik bằng cách tìm các giá trị thỏa mãn ràng buộc.</p>
             <p><b>Biến:</b> Các vị trí góc (cp), định hướng góc (co), vị trí cạnh (ep), định hướng cạnh (eo)</p>
             <p><b>Ràng buộc:</b> 
                 (1) Hoán vị góc và cạnh phải hợp lệ; 
@@ -39,7 +39,7 @@ class CSPWidget(QWidget):
                 (3) Tổng định hướng cạnh phải chia hết cho 2; 
                 (4) Corner parity và edge parity phải khớp nhau
             </p>
-            <p><b>Mục tiêu:</b> Kiểm tra xem cấu hình đã cho có thỏa mãn tất cả các ràng buộc không, từ đó xác định khả năng giải được của cấu hình.</p>
+            <p><b>Mục tiêu:</b> Từ các giá trị ban đầu đã cho, sử dụng AC-3 để thu hẹp miền giá trị, sau đó dùng backtracking để tìm cấu hình hợp lệ.</p>
         </div>
         """)
         main_layout.addWidget(problem_text)
@@ -54,75 +54,76 @@ class CSPWidget(QWidget):
         left_widget.setLayout(left_layout)
         
         # Rubik configuration input
-        config_group = QGroupBox("Cấu hình Rubik")
+        config_group = QGroupBox("Cấu hình ban đầu Rubik")
         config_layout = QVBoxLayout()
         
         # Input options
         input_options_layout = QHBoxLayout()
         
-        # Random button
-        self.random_btn = QPushButton("Tạo cấu hình ngẫu nhiên")
-        self.random_btn.clicked.connect(self.generate_random_config)
-        input_options_layout.addWidget(self.random_btn)
+        # Empty configuration button
+        self.empty_btn = QPushButton("Cấu hình trống")
+        self.empty_btn.clicked.connect(self.generate_empty_config)
+        input_options_layout.addWidget(self.empty_btn)
         
-        # Solve button
+        # Partial random button
+        self.partial_random_btn = QPushButton("Cấu hình ngẫu nhiên một phần")
+        self.partial_random_btn.clicked.connect(self.generate_partial_random)
+        input_options_layout.addWidget(self.partial_random_btn)
+        
+        # Solved configuration button
         self.solved_btn = QPushButton("Cấu hình đã giải")
         self.solved_btn.clicked.connect(self.generate_solved_state)
         input_options_layout.addWidget(self.solved_btn)
         
-        # Manual input
         config_layout.addLayout(input_options_layout)
-        config_layout.addWidget(QLabel("Nhập thủ công:"))
         
-        # Tạo layout cho nhập từng thành phần
-        manual_input_layout = QVBoxLayout()
+        # Configuration tables
+        tables_layout = QGridLayout()
         
-        # Thêm hướng dẫn
-        input_guide = QLabel("Định dạng: cp=(...), co=(...), ep=(...), eo=(...)")
-        manual_input_layout.addWidget(input_guide)
+        # Corner Permutation (cp) table
+        cp_group = QGroupBox("Corner Permutation (cp)")
+        cp_layout = QVBoxLayout()
+        self.cp_table = QTableWidget(2, 4)
+        self.cp_table.setHorizontalHeaderLabels([f"Góc {i}" for i in range(4)])
+        self.cp_table.setVerticalHeaderLabels([f"Hàng {i+1}" for i in range(2)])
+        cp_layout.addWidget(self.cp_table)
+        cp_group.setLayout(cp_layout)
+        tables_layout.addWidget(cp_group, 0, 0)
         
-        # Thêm các nút chèn mẫu
-        template_layout = QHBoxLayout()
+        # Corner Orientation (co) table
+        co_group = QGroupBox("Corner Orientation (co)")
+        co_layout = QVBoxLayout()
+        self.co_table = QTableWidget(2, 4)
+        self.co_table.setHorizontalHeaderLabels([f"Góc {i}" for i in range(4)])
+        self.co_table.setVerticalHeaderLabels([f"Hàng {i+1}" for i in range(2)])
+        co_layout.addWidget(self.co_table)
+        co_group.setLayout(co_layout)
+        tables_layout.addWidget(co_group, 0, 1)
         
-        self.insert_template_btn = QPushButton("Chèn mẫu RubikState")
-        self.insert_template_btn.clicked.connect(self.insert_template)
-        template_layout.addWidget(self.insert_template_btn)
+        # Edge Permutation (ep) table
+        ep_group = QGroupBox("Edge Permutation (ep)")
+        ep_layout = QVBoxLayout()
+        self.ep_table = QTableWidget(2, 6)
+        self.ep_table.setHorizontalHeaderLabels([f"Cạnh {i}" for i in range(6)])
+        self.ep_table.setVerticalHeaderLabels([f"Hàng {i+1}" for i in range(2)])
+        ep_layout.addWidget(self.ep_table)
+        ep_group.setLayout(ep_layout)
+        tables_layout.addWidget(ep_group, 1, 0)
         
-        self.insert_cp_btn = QPushButton("Chèn cp")
-        self.insert_cp_btn.clicked.connect(lambda: self.insert_component("cp"))
-        template_layout.addWidget(self.insert_cp_btn)
+        # Edge Orientation (eo) table
+        eo_group = QGroupBox("Edge Orientation (eo)")
+        eo_layout = QVBoxLayout()
+        self.eo_table = QTableWidget(2, 6)
+        self.eo_table.setHorizontalHeaderLabels([f"Cạnh {i}" for i in range(6)])
+        self.eo_table.setVerticalHeaderLabels([f"Hàng {i+1}" for i in range(2)])
+        eo_layout.addWidget(self.eo_table)
+        eo_group.setLayout(eo_layout)
+        tables_layout.addWidget(eo_group, 1, 1)
         
-        self.insert_co_btn = QPushButton("Chèn co")
-        self.insert_co_btn.clicked.connect(lambda: self.insert_component("co"))
-        template_layout.addWidget(self.insert_co_btn)
+        config_layout.addLayout(tables_layout)
         
-        self.insert_ep_btn = QPushButton("Chèn ep")
-        self.insert_ep_btn.clicked.connect(lambda: self.insert_component("ep"))
-        template_layout.addWidget(self.insert_ep_btn)
-        
-        self.insert_eo_btn = QPushButton("Chèn eo")
-        self.insert_eo_btn.clicked.connect(lambda: self.insert_component("eo"))
-        template_layout.addWidget(self.insert_eo_btn)
-        
-        manual_input_layout.addLayout(template_layout)
-        
-        # Text edit cho nhập thủ công
-        self.manual_input = QTextEdit()
-        self.manual_input.setPlaceholderText("Nhập cấu hình Rubik tại đây...\n\nVí dụ:\nRubikState(\n  cp=(0,1,2,3,4,5,6,7),\n  co=(0,0,0,0,0,0,0,0),\n  ep=(0,1,2,3,4,5,6,7,8,9,10,11),\n  eo=(0,0,0,0,0,0,0,0,0,0,0,0)\n)")
-        self.manual_input.setMinimumHeight(200)
-        manual_input_layout.addWidget(self.manual_input)
-        
-        # Thêm nút và form để điều chỉnh cấu hình tinh chỉnh
-        fine_tune_btn = QPushButton("Điều chỉnh cấu hình tinh chỉnh")
-        fine_tune_btn.clicked.connect(self.show_fine_tune_dialog)
-        manual_input_layout.addWidget(fine_tune_btn)
-        
-        config_layout.addLayout(manual_input_layout)
-        
-        # Check button
-        self.check_btn = QPushButton("Kiểm tra cấu hình")
-        self.check_btn.clicked.connect(self.check_configuration)
-        config_layout.addWidget(self.check_btn)
+        # Initialize tables
+        self.initialize_tables()
         
         config_group.setLayout(config_layout)
         left_layout.addWidget(config_group)
@@ -132,18 +133,27 @@ class CSPWidget(QWidget):
         algo_layout = QVBoxLayout()
         
         self.algo_group = QButtonGroup()
-        self.backtracking_rb = QRadioButton("Backtracking (gán từng số)")
-        self.backtracking_rb.setChecked(True)
-        self.backtracking_test_rb = QRadioButton("Backtracking kiểm thử (gắn hết 1 lượt)")
-        self.ac3_rb = QRadioButton("AC-3")
+        self.ac3_rb = QRadioButton("AC-3 (Arc Consistency)")
+        self.ac3_rb.setChecked(True)
+        self.backtracking_rb = QRadioButton("Backtracking")
+        self.combined_rb = QRadioButton("AC-3 + Backtracking")
         
-        self.algo_group.addButton(self.backtracking_rb, 1)
-        self.algo_group.addButton(self.backtracking_test_rb, 2)
-        self.algo_group.addButton(self.ac3_rb, 3)
+        self.algo_group.addButton(self.ac3_rb, 1)
+        self.algo_group.addButton(self.backtracking_rb, 2)
+        self.algo_group.addButton(self.combined_rb, 3)
         
-        algo_layout.addWidget(self.backtracking_rb)
-        algo_layout.addWidget(self.backtracking_test_rb)
         algo_layout.addWidget(self.ac3_rb)
+        algo_layout.addWidget(self.backtracking_rb)
+        algo_layout.addWidget(self.combined_rb)
+        
+        # Number of solutions to find
+        solutions_layout = QHBoxLayout()
+        solutions_layout.addWidget(QLabel("Số lượng giải pháp cần tìm:"))
+        self.solutions_spinbox = QSpinBox()
+        self.solutions_spinbox.setRange(1, 10)
+        self.solutions_spinbox.setValue(3)
+        solutions_layout.addWidget(self.solutions_spinbox)
+        algo_layout.addLayout(solutions_layout)
         
         # Execute button
         self.execute_btn = QPushButton("Thực thi thuật toán")
@@ -158,16 +168,16 @@ class CSPWidget(QWidget):
         right_layout = QVBoxLayout()
         right_widget.setLayout(right_layout)
         
-        # Rubik state display
-        state_group = QGroupBox("Trạng thái Rubik hiện tại")
-        state_layout = QVBoxLayout()
+        # Domain display
+        domain_group = QGroupBox("Miền giá trị sau khi áp dụng AC-3")
+        domain_layout = QVBoxLayout()
         
-        self.state_text = QTextEdit()
-        self.state_text.setReadOnly(True)
-        state_layout.addWidget(self.state_text)
+        self.domain_text = QTextEdit()
+        self.domain_text.setReadOnly(True)
+        domain_layout.addWidget(self.domain_text)
         
-        state_group.setLayout(state_layout)
-        right_layout.addWidget(state_group)
+        domain_group.setLayout(domain_layout)
+        right_layout.addWidget(domain_group)
         
         # Results section
         results_group = QGroupBox("Kết quả")
@@ -185,6 +195,205 @@ class CSPWidget(QWidget):
         content_splitter.addWidget(left_widget)
         content_splitter.addWidget(right_widget)
         content_splitter.setSizes([600, 800])  # Initial sizes
+    
+    def initialize_tables(self):
+        """Khởi tạo các bảng với các ô nhập liệu"""
+        # Corner Permutation (cp) table
+        for i in range(2):
+            for j in range(4):
+                idx = i * 4 + j
+                combo = QComboBox()
+                combo.addItem("")  # Empty option
+                combo.addItems([str(x) for x in range(8)])
+                self.cp_table.setCellWidget(i, j, combo)
+        
+        # Corner Orientation (co) table
+        for i in range(2):
+            for j in range(4):
+                idx = i * 4 + j
+                combo = QComboBox()
+                combo.addItem("")  # Empty option
+                combo.addItems([str(x) for x in range(3)])
+                self.co_table.setCellWidget(i, j, combo)
+        
+        # Edge Permutation (ep) table
+        for i in range(2):
+            for j in range(6):
+                idx = i * 6 + j
+                combo = QComboBox()
+                combo.addItem("")  # Empty option
+                combo.addItems([str(x) for x in range(12)])
+                self.ep_table.setCellWidget(i, j, combo)
+        
+        # Edge Orientation (eo) table
+        for i in range(2):
+            for j in range(6):
+                idx = i * 6 + j
+                combo = QComboBox()
+                combo.addItem("")  # Empty option
+                combo.addItems(["0", "1"])
+                self.eo_table.setCellWidget(i, j, combo)
+        
+        # Resize columns to content
+        for table in [self.cp_table, self.co_table, self.ep_table, self.eo_table]:
+            table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+            table.verticalHeader().setSectionResizeMode(QHeaderView.Stretch)
+    
+    def generate_empty_config(self):
+        """Tạo cấu hình trống cho tất cả các bảng"""
+        # Clear all selections
+        for i in range(2):
+            for j in range(4):
+                self.cp_table.cellWidget(i, j).setCurrentIndex(0)
+                self.co_table.cellWidget(i, j).setCurrentIndex(0)
+        
+        for i in range(2):
+            for j in range(6):
+                self.ep_table.cellWidget(i, j).setCurrentIndex(0)
+                self.eo_table.cellWidget(i, j).setCurrentIndex(0)
+        
+        self.result_text.clear()
+        self.domain_text.clear()
+        self.domain_text.setText("Miền giá trị ban đầu chưa được thu hẹp.\nChạy thuật toán AC-3 để thấy kết quả.")
+    
+    def generate_partial_random(self):
+        """Tạo cấu hình ngẫu nhiên một phần"""
+        # Clear first
+        self.generate_empty_config()
+        
+        # Set random values for ~30% of cells
+        # Corner Permutation
+        used_cp = set()
+        for _ in range(2):  # Fill 2 random cp cells
+            i, j = random.randint(0, 1), random.randint(0, 3)
+            idx = i * 4 + j
+            
+            # Ensure unique values for cp
+            val = random.randint(0, 7)
+            while val in used_cp:
+                val = random.randint(0, 7)
+                
+            used_cp.add(val)
+            self.cp_table.cellWidget(i, j).setCurrentIndex(val + 1)  # +1 because index 0 is empty
+        
+        # Corner Orientation
+        for _ in range(2):  # Fill 2 random co cells
+            i, j = random.randint(0, 1), random.randint(0, 3)
+            val = random.randint(0, 2)
+            self.co_table.cellWidget(i, j).setCurrentIndex(val + 1)
+        
+        # Edge Permutation
+        used_ep = set()
+        for _ in range(3):  # Fill 3 random ep cells
+            i, j = random.randint(0, 1), random.randint(0, 5)
+            
+            # Ensure unique values for ep
+            val = random.randint(0, 11)
+            while val in used_ep:
+                val = random.randint(0, 11)
+                
+            used_ep.add(val)
+            self.ep_table.cellWidget(i, j).setCurrentIndex(val + 1)
+        
+        # Edge Orientation
+        for _ in range(3):  # Fill 3 random eo cells
+            i, j = random.randint(0, 1), random.randint(0, 5)
+            val = random.randint(0, 1)
+            self.eo_table.cellWidget(i, j).setCurrentIndex(val + 1)
+        
+        self.domain_text.setText("Một số giá trị đã được thiết lập ngẫu nhiên.\nChạy thuật toán AC-3 để thu hẹp miền giá trị.")
+    
+    def generate_solved_state(self):
+        """Thiết lập cấu hình trạng thái đã giải"""
+        # Clear first
+        self.generate_empty_config()
+        
+        # Set values to solved state
+        for i in range(2):
+            for j in range(4):
+                idx = i * 4 + j
+                if idx < 8:
+                    # cp = ordered 0-7
+                    self.cp_table.cellWidget(i, j).setCurrentIndex(idx + 1)
+                    # co = all 0
+                    self.co_table.cellWidget(i, j).setCurrentIndex(1)  # Index 1 = value 0
+        
+        for i in range(2):
+            for j in range(6):
+                idx = i * 6 + j
+                if idx < 12:
+                    # ep = ordered 0-11
+                    self.ep_table.cellWidget(i, j).setCurrentIndex(idx + 1)
+                    # eo = all 0
+                    self.eo_table.cellWidget(i, j).setCurrentIndex(1)  # Index 1 = value 0
+        
+        self.domain_text.setText("Cấu hình đã giải được thiết lập.\nĐây là một cấu hình hoàn chỉnh và hợp lệ.")
+    
+    def get_current_configuration(self):
+        """Lấy cấu hình hiện tại từ các bảng"""
+        config = {
+            "cp": [None] * 8,
+            "co": [None] * 8,
+            "ep": [None] * 12,
+            "eo": [None] * 12
+        }
+        
+        # Get corner permutation
+        for i in range(2):
+            for j in range(4):
+                idx = i * 4 + j
+                if idx < 8:
+                    combo = self.cp_table.cellWidget(i, j)
+                    text = combo.currentText()
+                    if text:  # Not empty
+                        config["cp"][idx] = int(text)
+        
+        # Get corner orientation
+        for i in range(2):
+            for j in range(4):
+                idx = i * 4 + j
+                if idx < 8:
+                    combo = self.co_table.cellWidget(i, j)
+                    text = combo.currentText()
+                    if text:  # Not empty
+                        config["co"][idx] = int(text)
+        
+        # Get edge permutation
+        for i in range(2):
+            for j in range(6):
+                idx = i * 6 + j
+                if idx < 12:
+                    combo = self.ep_table.cellWidget(i, j)
+                    text = combo.currentText()
+                    if text:  # Not empty
+                        config["ep"][idx] = int(text)
+        
+        # Get edge orientation
+        for i in range(2):
+            for j in range(6):
+                idx = i * 6 + j
+                if idx < 12:
+                    combo = self.eo_table.cellWidget(i, j)
+                    text = combo.currentText()
+                    if text:  # Not empty
+                        config["eo"][idx] = int(text)
+        
+        return config
+    
+    def calculate_parity(self, perm):
+        """Tính dấu hoán vị (chẵn: 0, lẻ: 1)"""
+        # Filter out None values
+        valid_perm = [p for p in perm if p is not None]
+        
+        if len(valid_perm) <= 1:
+            return 0  # Không đủ phần tử để tính parity
+            
+        inversions = 0
+        for i in range(len(valid_perm)):
+            for j in range(i + 1, len(valid_perm)):
+                if valid_perm[i] > valid_perm[j]:
+                    inversions += 1
+        return inversions % 2
     
     def show_fine_tune_dialog(self):
         """Hiển thị hộp thoại để điều chỉnh cấu hình tinh chỉnh"""
@@ -358,54 +567,6 @@ class CSPWidget(QWidget):
             self.ep_spinboxes[0].setValue(ep_values[1])
             self.ep_spinboxes[1].setValue(ep_values[0])
     
-    def generate_random_config(self):
-        """Tạo cấu hình Rubik ngẫu nhiên"""
-        # Tạo hoán vị ngẫu nhiên cho góc (corner permutation)
-        cp = list(range(8))
-        random.shuffle(cp)
-        
-        # Tạo định hướng ngẫu nhiên cho góc (corner orientation)
-        co = [random.randint(0, 2) for _ in range(8)]
-        # Đảm bảo tổng orientation chia hết cho 3
-        co_sum = sum(co) % 3
-        if co_sum != 0:
-            co[0] = (co[0] + (3 - co_sum)) % 3
-        
-        # Tạo hoán vị ngẫu nhiên cho cạnh (edge permutation)
-        ep = list(range(12))
-        random.shuffle(ep)
-        
-        # Tạo định hướng ngẫu nhiên cho cạnh (edge orientation)
-        eo = [random.randint(0, 1) for _ in range(12)]
-        # Đảm bảo tổng orientation chia hết cho 2
-        if sum(eo) % 2 != 0:
-            eo[0] = 1 - eo[0]  # Đảo bit đầu tiên
-        
-        # Đảm bảo parity khớp nhau
-        corner_parity = self.calculate_parity(cp)
-        edge_parity = self.calculate_parity(ep)
-        
-        if corner_parity != edge_parity:
-            # Hoán đổi hai cạnh để thay đổi parity
-            ep[0], ep[1] = ep[1], ep[0]
-        
-        # Tạo trạng thái Rubik
-        rubik_state = RubikState(tuple(cp), tuple(co), tuple(ep), tuple(eo))
-        
-        # Chuyển đổi sang chuỗi để hiển thị
-        config_text = f"RubikState(\n  cp={rubik_state.cp},\n  co={rubik_state.co},\n  ep={rubik_state.ep},\n  eo={rubik_state.eo}\n)"
-        self.manual_input.setText(config_text)
-        
-        # Hiển thị state đầy đủ
-        self.display_rubik_state(rubik_state)
-    
-    def generate_solved_state(self):
-        """Tạo cấu hình trạng thái đã giải"""
-        rubik_state = SOLVED_STATE_3x3
-        config_text = f"RubikState(\n  cp={rubik_state.cp},\n  co={rubik_state.co},\n  ep={rubik_state.ep},\n  eo={rubik_state.eo}\n)"
-        self.manual_input.setText(config_text)
-        self.display_rubik_state(rubik_state)
-    
     def display_rubik_state(self, rubik_state):
         """Hiển thị trạng thái Rubik trong state_text"""
         if not rubik_state:
@@ -543,639 +704,434 @@ class CSPWidget(QWidget):
         except Exception as e:
             raise ValueError(f"Không thể đánh giá chuỗi '{value_str}': {str(e)}")
     
-    def calculate_parity(self, perm):
-        """Tính dấu hoán vị (chẵn: 0, lẻ: 1)"""
-        inversions = 0
-        for i in range(len(perm)):
-            for j in range(i + 1, len(perm)):
-                if perm[i] > perm[j]:
-                    inversions += 1
-        return inversions % 2
-    
-    def check_configuration(self):
-        """Kiểm tra cấu hình Rubik hiện tại có hợp lệ không"""
-        # Phân tích cấu hình
-        rubik_state = self.parse_configuration()
-        if not rubik_state:
-            return
-            
-        # Hiển thị trạng thái
-        self.display_rubik_state(rubik_state)
-        
-        # Kiểm tra tính hợp lệ
-        result_text = "<h3>Kiểm tra cấu hình:</h3>\n"
-        
-        # 1. Kiểm tra cp/co/ep/eo có đúng kích thước không
-        if (len(rubik_state.cp) != 8 or len(rubik_state.co) != 8 or 
-            len(rubik_state.ep) != 12 or len(rubik_state.eo) != 12):
-            result_text += "<p style='color:red'>❌ Lỗi: Kích thước cp/co/ep/eo không đúng!</p>\n"
-            self.result_text.setHtml(result_text)
-            return
-        
-        # 2. Kiểm tra hoán vị góc có hợp lệ không
-        if set(rubik_state.cp) != set(range(8)):
-            result_text += "<p style='color:red'>❌ Lỗi: Hoán vị góc (cp) không hợp lệ!</p>\n"
-            self.result_text.setHtml(result_text)
-            return
-        
-        # 3. Kiểm tra định hướng góc có hợp lệ không
-        if not all(0 <= co <= 2 for co in rubik_state.co):
-            result_text += "<p style='color:red'>❌ Lỗi: Định hướng góc (co) không hợp lệ!</p>\n"
-            self.result_text.setHtml(result_text)
-            return
-        
-        # 4. Kiểm tra tổng định hướng góc có chia hết cho 3 không
-        if sum(rubik_state.co) % 3 != 0:
-            result_text += "<p style='color:red'>❌ Lỗi: Tổng định hướng góc (co) không chia hết cho 3!</p>\n"
-            self.result_text.setHtml(result_text)
-            return
-        
-        # 5. Kiểm tra hoán vị cạnh có hợp lệ không
-        if set(rubik_state.ep) != set(range(12)):
-            result_text += "<p style='color:red'>❌ Lỗi: Hoán vị cạnh (ep) không hợp lệ!</p>\n"
-            self.result_text.setHtml(result_text)
-            return
-        
-        # 6. Kiểm tra định hướng cạnh có hợp lệ không
-        if not all(0 <= eo <= 1 for eo in rubik_state.eo):
-            result_text += "<p style='color:red'>❌ Lỗi: Định hướng cạnh (eo) không hợp lệ!</p>\n"
-            self.result_text.setHtml(result_text)
-            return
-        
-        # 7. Kiểm tra tổng định hướng cạnh có chia hết cho 2 không
-        if sum(rubik_state.eo) % 2 != 0:
-            result_text += "<p style='color:red'>❌ Lỗi: Tổng định hướng cạnh (eo) không chia hết cho 2!</p>\n"
-            self.result_text.setHtml(result_text)
-            return
-        
-        # 8. Kiểm tra parity (chẵn/lẻ)
-        corner_parity = self.calculate_parity(rubik_state.cp)
-        edge_parity = self.calculate_parity(rubik_state.ep)
-        if corner_parity != edge_parity:
-            result_text += "<p style='color:red'>❌ Lỗi: Corner parity và edge parity không khớp nhau!</p>\n"
-            self.result_text.setHtml(result_text)
-            return
-        
-        # Cấu hình hợp lệ
-        result_text += "<p style='color:green; font-weight:bold'>✅ Cấu hình Rubik hợp lệ!</p>\n\n"
-        result_text += "<p><b>Đã kiểm tra:</b></p>\n<ul>\n"
-        result_text += "<li>Kích thước và giá trị của cp/co/ep/eo</li>\n"
-        result_text += "<li>Tổng định hướng góc chia hết cho 3</li>\n"
-        result_text += "<li>Tổng định hướng cạnh chia hết cho 2</li>\n"
-        result_text += "<li>Corner parity và edge parity khớp nhau</li>\n"
-        result_text += "</ul>\n"
-        
-        self.result_text.setHtml(result_text)
-    
     def execute_algorithm(self):
         """Thực thi thuật toán CSP đã chọn"""
         algorithm = self.get_selected_algorithm()
         
-        # Phân tích cấu hình
-        rubik_state = self.parse_configuration()
-        if not rubik_state:
-            return
-            
-        # Hiển thị trạng thái
-        self.display_rubik_state(rubik_state)
+        # Lấy cấu hình hiện tại
+        config = self.get_current_configuration()
         
-        # Kiểm tra tính hợp lệ của cấu hình
-        if (len(rubik_state.cp) != 8 or len(rubik_state.co) != 8 or 
-            len(rubik_state.ep) != 12 or len(rubik_state.eo) != 12 or
-            set(rubik_state.cp) != set(range(8)) or 
-            not all(0 <= co <= 2 for co in rubik_state.co) or
-            sum(rubik_state.co) % 3 != 0 or
-            set(rubik_state.ep) != set(range(12)) or
-            not all(0 <= eo <= 1 for eo in rubik_state.eo) or
-            sum(rubik_state.eo) % 2 != 0):
-            
-            self.result_text.setText("Không thể thực thi thuật toán trên cấu hình không hợp lệ.\nVui lòng kiểm tra cấu hình trước.")
-            return
+        # Khởi tạo các biến và miền giá trị
+        variables, domains = self.setup_csp_variables(config)
         
-        # Thực thi thuật toán
-        result = f"Đang thực thi thuật toán {algorithm} trên cấu hình đã cho...\n\n"
-        
-        if algorithm == "Backtracking":
-            result += self.run_backtracking(rubik_state)
-            
-        elif algorithm == "Backtracking Test":
-            result += self.run_backtracking_test(rubik_state)
-            
-        elif algorithm == "AC-3":
-            result += self.run_ac3(rubik_state)
-            
-        # Sử dụng setHtml thay vì setText để hiển thị nội dung HTML đúng cách
-        self.result_text.setHtml(result)
+        # Thực thi thuật toán tương ứng
+        if algorithm == "AC-3":
+            self.run_ac3(variables, domains)
+        elif algorithm == "Backtracking":
+            self.run_backtracking(variables, domains)
+        elif algorithm == "Combined":
+            # Chạy AC-3 trước
+            revised_domains = self.run_ac3(variables, domains, return_domains=True)
+            # Sau đó chạy Backtracking với miền đã thu hẹp
+            self.run_backtracking(variables, revised_domains)
     
-    def run_backtracking(self, rubik_state):
-        """Chạy thuật toán backtracking thực tế trên cấu hình Rubik"""
-        result = "<h3>Thuật toán Backtracking (gán từng số):</h3>\n"
-        result += "<p>Thuật toán này kiểm tra tính hợp lệ của cấu hình Rubik bằng cách gán từng giá trị và kiểm tra ràng buộc.</p>\n"
-        
-        # Thiết lập bài toán CSP
-        variables = []  # Danh sách các biến
-        domains = {}    # Miền giá trị cho mỗi biến
-        assignments = {}  # Các giá trị đã gán
-        
-        # Định nghĩa biến và miền giá trị
-        # Corner permutation - mỗi góc có thể ở vị trí 0-7
-        for i in range(8):
-            var_name = f"cp_{i}"
-            variables.append(var_name)
-            domains[var_name] = list(range(8))
-            
-        # Corner orientation - mỗi góc có thể có hướng 0-2
-        for i in range(8):
-            var_name = f"co_{i}"
-            variables.append(var_name)
-            domains[var_name] = [0, 1, 2]
-            
-        # Edge permutation - mỗi cạnh có thể ở vị trí 0-11
-        for i in range(12):
-            var_name = f"ep_{i}"
-            variables.append(var_name)
-            domains[var_name] = list(range(12))
-            
-        # Edge orientation - mỗi cạnh có thể có hướng 0-1
-        for i in range(12):
-            var_name = f"eo_{i}"
-            variables.append(var_name)
-            domains[var_name] = [0, 1]
-            
-        # Hàm kiểm tra ràng buộc
-        def check_constraints(assignments, var, val):
-            # Ràng buộc cho các góc - không trùng vị trí
-            if var.startswith("cp_"):
-                for other_var, other_val in assignments.items():
-                    if other_var.startswith("cp_") and other_var != var and other_val == val:
-                        return False
-                        
-            # Ràng buộc cho các cạnh - không trùng vị trí
-            if var.startswith("ep_"):
-                for other_var, other_val in assignments.items():
-                    if other_var.startswith("ep_") and other_var != var and other_val == val:
-                        return False
-                        
-            # Kiểm tra ràng buộc định hướng góc khi đã gán hết
-            if var == "co_7" and all(f"co_{i}" in assignments for i in range(8)):
-                co_vals = [assignments[f"co_{i}"] for i in range(8)]
-                if sum(co_vals) % 3 != 0:
-                    return False
-                    
-            # Kiểm tra ràng buộc định hướng cạnh khi đã gán hết
-            if var == "eo_11" and all(f"eo_{i}" in assignments for i in range(12)):
-                eo_vals = [assignments[f"eo_{i}"] for i in range(12)]
-                if sum(eo_vals) % 2 != 0:
-                    return False
-                    
-            # Kiểm tra ràng buộc parity khi đã gán hết cả cp và ep
-            if (all(f"cp_{i}" in assignments for i in range(8)) and 
-                all(f"ep_{i}" in assignments for i in range(12))):
-                cp_vals = [assignments[f"cp_{i}"] for i in range(8)]
-                ep_vals = [assignments[f"ep_{i}"] for i in range(12)]
-                
-                cp_parity = self.calculate_parity(cp_vals)
-                ep_parity = self.calculate_parity(ep_vals)
-                
-                if cp_parity != ep_parity:
-                    return False
-                    
-            return True
-            
-        # Thuật toán backtracking
-        def backtrack_search(assignment, unassigned_vars, steps, max_steps=100):
-            if steps >= max_steps:
-                return None, steps
-                
-            if not unassigned_vars:  # Đã gán hết các biến
-                return assignment, steps
-                
-            var = unassigned_vars[0]  # Lấy biến đầu tiên chưa gán
-            
-            for value in domains[var]:
-                new_assignment = assignment.copy()
-                new_assignment[var] = value
-                
-                if check_constraints(new_assignment, var, value):
-                    # Ghi lại bước thực hiện
-                    steps += 1
-                    step_result = f"<p>- Gán <b>{var} = {value}</b>: "
-                    step_result += f"<span style='color:green'>Hợp lệ</span></p>\n"
-                    backtrack_steps.append(step_result)
-                    
-                    # Tiếp tục đệ quy
-                    result, steps = backtrack_search(new_assignment, unassigned_vars[1:], steps, max_steps)
-                    if result:
-                        return result, steps
-                    
-                    # Nếu không tìm được kết quả, quay lui
-                    step_result = f"<p>- <i>Quay lui từ <b>{var} = {value}</b></i></p>\n"
-                    backtrack_steps.append(step_result)
-            
-            return None, steps
-            
-        # Khởi tạo cấu hình nếu có cấu hình sẵn
-        if rubik_state:
-            for i in range(8):
-                assignments[f"cp_{i}"] = rubik_state.cp[i]
-                assignments[f"co_{i}"] = rubik_state.co[i]
-            for i in range(12):
-                assignments[f"ep_{i}"] = rubik_state.ep[i]
-                assignments[f"eo_{i}"] = rubik_state.eo[i]
-            
-            # Kiểm tra ràng buộc trên cấu hình đã cho
-            is_valid_cp = len(set(rubik_state.cp)) == 8 and set(rubik_state.cp) == set(range(8))
-            is_valid_co = all(0 <= co <= 2 for co in rubik_state.co) and sum(rubik_state.co) % 3 == 0
-            is_valid_ep = len(set(rubik_state.ep)) == 12 and set(rubik_state.ep) == set(range(12))
-            is_valid_eo = all(0 <= eo <= 1 for eo in rubik_state.eo) and sum(rubik_state.eo) % 2 == 0
-            
-            cp_parity = self.calculate_parity(rubik_state.cp)
-            ep_parity = self.calculate_parity(rubik_state.ep)
-            parity_valid = cp_parity == ep_parity
-            
-            all_valid = is_valid_cp and is_valid_co and is_valid_ep and is_valid_eo and parity_valid
-            
-            # Hiển thị kết quả kiểm tra ràng buộc
-            result += "<h4>Kiểm tra ràng buộc trên cấu hình đã cho:</h4>\n"
-            result += f"<p>- Hoán vị góc (cp): {self.format_result(is_valid_cp)}</p>\n"
-            result += f"<p>- Định hướng góc (co): {self.format_result(is_valid_co)}</p>\n"
-            result += f"<p>- Hoán vị cạnh (ep): {self.format_result(is_valid_ep)}</p>\n"
-            result += f"<p>- Định hướng cạnh (eo): {self.format_result(is_valid_eo)}</p>\n"
-            result += f"<p>- Parity góc và cạnh: {self.format_result(parity_valid, 'Khớp nhau', 'Không khớp')}</p>\n"
-            
-            if all_valid:
-                result += "<h4>Kết luận:</h4>\n"
-                result += "<p style='color:green; font-weight:bold'>✅ Cấu hình Rubik đã cho thỏa mãn tất cả các ràng buộc.</p>\n"
-                result += "<p>→ Cấu hình này <b>có thể giải được</b>.</p>\n"
-                return result
-            
-            # Nếu không thỏa mãn tất cả ràng buộc, tiếp tục với backtracking
-            result += "<p>Cấu hình không thỏa mãn tất cả ràng buộc, tiếp tục với backtracking...</p>\n"
-        
-        # Thử chạy thuật toán backtracking từ cấu hình rỗng
-        backtrack_steps = []  # Lưu các bước thực hiện
-        final_assignment, step_count = backtrack_search({}, variables, 0, 50)
-        
-        # Hiển thị các bước thực hiện
-        result += "<h4>Quá trình backtracking:</h4>\n"
-        for step in backtrack_steps[:20]:  # Giới hạn số bước hiển thị
-            result += step
-            
-        if len(backtrack_steps) > 20:
-            result += f"<p><i>...và {len(backtrack_steps) - 20} bước khác</i></p>\n"
-        
-        # Hiển thị kết quả
-        result += "<h4>Kết quả backtracking:</h4>\n"
-        if final_assignment:
-            result += f"<p>- Đã thực hiện {step_count} bước gán giá trị</p>\n"
-            result += "<p style='color:green; font-weight:bold'>✅ Tìm thấy cấu hình Rubik hợp lệ!</p>\n"
-            result += "<p>→ Cấu hình <b>có thể giải được</b>.</p>\n"
-        else:
-            result += f"<p>- Đã thực hiện {step_count} bước gán giá trị mà không tìm thấy kết quả</p>\n"
-            result += "<p>→ Có thể cấu hình <b>không thể giải được</b>, hoặc thuật toán cần nhiều bước hơn để tìm ra kết quả.</p>\n"
-        
-        return result
+    def get_selected_algorithm(self):
+        """Lấy thuật toán đang được chọn"""
+        if self.ac3_rb.isChecked():
+            return "AC-3"
+        elif self.backtracking_rb.isChecked():
+            return "Backtracking"
+        elif self.combined_rb.isChecked():
+            return "Combined"
+        return "Unknown"
     
-    def run_backtracking_test(self, rubik_state):
-        """Chạy thuật toán backtracking kiểm thử trên cấu hình Rubik"""
-        result = "<h3>Thuật toán Backtracking kiểm thử (gắn hết 1 lượt):</h3>\n"
-        result += "<ul>\n"
-        result += "<li>Bắt đầu với cấu hình đầy đủ</li>\n"
-        result += "<li>Kiểm tra xem tất cả các ràng buộc có được thỏa mãn không</li>\n"
-        result += "</ul>\n"
-        
-        # Kiểm tra các ràng buộc cơ bản
-        
-        # 1. Kiểm tra tất cả các hoán vị và định hướng có hợp lệ không
-        result += "<h4>Kiểm tra tính hợp lệ của cấu hình:</h4>\n"
-        
-        # Kiểm tra hoán vị góc (cp)
-        cp_valid = set(rubik_state.cp) == set(range(8))
-        result += f"<p>- Hoán vị góc (cp): {self.format_result(cp_valid)}</p>\n"
-        
-        # Kiểm tra định hướng góc (co)
-        co_valid = all(0 <= co <= 2 for co in rubik_state.co) and sum(rubik_state.co) % 3 == 0
-        result += f"<p>- Định hướng góc (co): {self.format_result(co_valid)}</p>\n"
-        
-        # Kiểm tra hoán vị cạnh (ep)
-        ep_valid = set(rubik_state.ep) == set(range(12))
-        result += f"<p>- Hoán vị cạnh (ep): {self.format_result(ep_valid)}</p>\n"
-        
-        # Kiểm tra định hướng cạnh (eo)
-        eo_valid = all(0 <= eo <= 1 for eo in rubik_state.eo) and sum(rubik_state.eo) % 2 == 0
-        result += f"<p>- Định hướng cạnh (eo): {self.format_result(eo_valid)}</p>\n"
-        
-        # 2. Kiểm tra parity
-        corner_parity = self.calculate_parity(rubik_state.cp)
-        edge_parity = self.calculate_parity(rubik_state.ep)
-        parity_valid = corner_parity == edge_parity
-        result += f"<p>- Parity góc và cạnh: {self.format_result(parity_valid, 'Khớp nhau', 'Không khớp')}</p>\n"
-        
-        # Kết luận
-        all_valid = cp_valid and co_valid and ep_valid and eo_valid and parity_valid
-        
-        result += "<h4>Kết luận:</h4>\n"
-        if all_valid:
-            result += "<p style='color:green; font-weight:bold'>✅ Cấu hình Rubik thỏa mãn tất cả các ràng buộc.</p>\n"
-            result += "<p>→ Cấu hình này <b>có thể đạt được</b> từ trạng thái đã giải.</p>\n"
-        else:
-            result += "<p style='color:red; font-weight:bold'>❌ Cấu hình Rubik vi phạm một số ràng buộc.</p>\n"
-            result += "<p>→ Cấu hình này <b>KHÔNG THỂ đạt được</b> từ trạng thái đã giải.</p>\n"
-            result += "<p>Các ràng buộc bị vi phạm:</p>\n<ul>\n"
-            if not cp_valid:
-                result += "<li>Hoán vị góc không hợp lệ</li>\n"
-            if not co_valid:
-                result += "<li>Định hướng góc không hợp lệ hoặc tổng không chia hết cho 3</li>\n"
-            if not ep_valid:
-                result += "<li>Hoán vị cạnh không hợp lệ</li>\n"
-            if not eo_valid:
-                result += "<li>Định hướng cạnh không hợp lệ hoặc tổng không chia hết cho 2</li>\n"
-            if not parity_valid:
-                result += "<li>Parity góc và cạnh không khớp nhau</li>\n"
-            result += "</ul>\n"
-            
-            # Gợi ý để sửa lỗi
-            result += "<h4>Gợi ý sửa lỗi:</h4>\n<ul>\n"
-            if not cp_valid:
-                result += "<li>Đảm bảo tất cả các vị trí góc từ 0-7 đều xuất hiện đúng một lần</li>\n"
-            if not co_valid:
-                if not all(0 <= co <= 2 for co in rubik_state.co):
-                    result += "<li>Đảm bảo tất cả các định hướng góc có giá trị từ 0-2</li>\n"
-                else:
-                    co_sum = sum(rubik_state.co) % 3
-                    result += f"<li>Tổng định hướng góc hiện tại chia 3 dư {co_sum}, cần điều chỉnh để chia hết cho 3</li>\n"
-            if not ep_valid:
-                result += "<li>Đảm bảo tất cả các vị trí cạnh từ 0-11 đều xuất hiện đúng một lần</li>\n"
-            if not eo_valid:
-                if not all(0 <= eo <= 1 for eo in rubik_state.eo):
-                    result += "<li>Đảm bảo tất cả các định hướng cạnh có giá trị 0 hoặc 1</li>\n"
-                else:
-                    eo_sum = sum(rubik_state.eo) % 2
-                    result += f"<li>Tổng định hướng cạnh hiện tại chia 2 dư {eo_sum}, cần điều chỉnh để chia hết cho 2</li>\n"
-            if not parity_valid:
-                result += "<li>Hoán đổi hai vị trí cạnh bất kỳ để thay đổi parity cạnh</li>\n"
-            result += "</ul>\n"
-        
-        return result
-    
-    def format_result(self, condition, success_text='Hợp lệ', fail_text='Không hợp lệ'):
-        """Định dạng kết quả kiểm tra với màu sắc"""
-        if condition:
-            return f"<span style='color:green'>✓ {success_text}</span>"
-        else:
-            return f"<span style='color:red'>✗ {fail_text}</span>"
-    
-    def run_ac3(self, rubik_state):
-        """Chạy thuật toán AC-3 thực tế trên cấu hình Rubik"""
-        result = "<h3>Thuật toán AC-3 (Arc Consistency):</h3>\n"
-        result += "<p>Thuật toán này đảm bảo tính nhất quán hồ quang (arc consistency) giữa các biến trong CSP.</p>\n"
-        
-        # Thiết lập biến và miền giá trị
+    def setup_csp_variables(self, config):
+        """Thiết lập các biến và miền giá trị dựa trên cấu hình"""
         variables = []
         domains = {}
         
-        # Nếu có cấu hình đã cho, dùng nó làm miền giá trị, nếu không, dùng miền đầy đủ
-        if rubik_state:
-            # Biến cp (corner permutation)
-            for i in range(8):
-                var_name = f"cp_{i}"
-                variables.append(var_name)
-                domains[var_name] = [rubik_state.cp[i]]
+        # Corner permutation variables
+        for i in range(8):
+            var_name = f"cp_{i}"
+            variables.append(var_name)
             
-            # Biến co (corner orientation)
-            for i in range(8):
-                var_name = f"co_{i}"
-                variables.append(var_name)
-                domains[var_name] = [rubik_state.co[i]]
+            if config["cp"][i] is not None:
+                domains[var_name] = [config["cp"][i]]
+            else:
+                # Domain contains all values not already used
+                used_values = [v for v in config["cp"] if v is not None]
+                domains[var_name] = [v for v in range(8) if v not in used_values]
+        
+        # Corner orientation variables
+        for i in range(8):
+            var_name = f"co_{i}"
+            variables.append(var_name)
             
-            # Biến ep (edge permutation)
-            for i in range(12):
-                var_name = f"ep_{i}"
-                variables.append(var_name)
-                domains[var_name] = [rubik_state.ep[i]]
-                
-            # Biến eo (edge orientation)
-            for i in range(12):
-                var_name = f"eo_{i}"
-                variables.append(var_name)
-                domains[var_name] = [rubik_state.eo[i]]
-        else:
-            # Biến cp (corner permutation) - miền đầy đủ
-            for i in range(8):
-                var_name = f"cp_{i}"
-                variables.append(var_name)
-                domains[var_name] = list(range(8))
-            
-            # Biến co (corner orientation) - miền đầy đủ
-            for i in range(8):
-                var_name = f"co_{i}"
-                variables.append(var_name)
+            if config["co"][i] is not None:
+                domains[var_name] = [config["co"][i]]
+            else:
                 domains[var_name] = [0, 1, 2]
+        
+        # Edge permutation variables
+        for i in range(12):
+            var_name = f"ep_{i}"
+            variables.append(var_name)
             
-            # Biến ep (edge permutation) - miền đầy đủ
-            for i in range(12):
-                var_name = f"ep_{i}"
-                variables.append(var_name)
-                domains[var_name] = list(range(12))
-                
-            # Biến eo (edge orientation) - miền đầy đủ
-            for i in range(12):
-                var_name = f"eo_{i}"
-                variables.append(var_name)
+            if config["ep"][i] is not None:
+                domains[var_name] = [config["ep"][i]]
+            else:
+                # Domain contains all values not already used
+                used_values = [v for v in config["ep"] if v is not None]
+                domains[var_name] = [v for v in range(12) if v not in used_values]
+        
+        # Edge orientation variables
+        for i in range(12):
+            var_name = f"eo_{i}"
+            variables.append(var_name)
+            
+            if config["eo"][i] is not None:
+                domains[var_name] = [config["eo"][i]]
+            else:
                 domains[var_name] = [0, 1]
         
-        # Thiết lập ràng buộc
+        return variables, domains
+    
+    def run_ac3(self, variables, domains, return_domains=False):
+        """Chạy thuật toán AC-3"""
+        self.result_text.clear()
+        self.domain_text.clear()
+        
+        # Copy domains to avoid modifying the original
+        domains = {var: list(values) for var, values in domains.items()}
+        
+        # Setup constraints (arcs)
         constraints = []
         
-        # Ràng buộc: các giá trị cp phải khác nhau (alldiff)
+        # Add constraints for corner permutation (alldiff)
         for i in range(8):
-            for j in range(i+1, 8):
+            for j in range(i + 1, 8):
                 constraints.append((f"cp_{i}", f"cp_{j}"))
         
-        # Ràng buộc: các giá trị ep phải khác nhau (alldiff)
+        # Add constraints for edge permutation (alldiff)
         for i in range(12):
-            for j in range(i+1, 12):
+            for j in range(i + 1, 12):
                 constraints.append((f"ep_{i}", f"ep_{j}"))
         
-        # Ràng buộc: tổng co phải chia hết cho 3
+        # Add constraints for corner orientation (sum mod 3 = 0)
         for i in range(8):
             for j in range(8):
                 if i != j:
                     constraints.append((f"co_{i}", f"co_{j}"))
         
-        # Ràng buộc: tổng eo phải chia hết cho 2
+        # Add constraints for edge orientation (sum mod 2 = 0)
         for i in range(12):
             for j in range(12):
                 if i != j:
                     constraints.append((f"eo_{i}", f"eo_{j}"))
         
-        # Ràng buộc: parity của cp và ep phải khớp nhau
-        constraints.append(("cp_0", "ep_0"))  # Đại diện cho ràng buộc parity
+        # Add constraints for parity match
+        for i in range(8):
+            for j in range(12):
+                constraints.append((f"cp_{i}", f"ep_{j}"))
         
-        # Thiết lập hàng đợi ràng buộc cho AC-3
+        # Initialize queue with all constraints
         queue = constraints.copy()
         
-        # Hàm kiểm tra ràng buộc giữa hai biến
-        def is_consistent(var_i, val_i, var_j, val_j):
-            # Ràng buộc alldiff cho cp
-            if var_i.startswith("cp_") and var_j.startswith("cp_"):
-                return val_i != val_j
-            
-            # Ràng buộc alldiff cho ep
-            if var_i.startswith("ep_") and var_j.startswith("ep_"):
-                return val_i != val_j
-            
-            # Ràng buộc tổng co chia hết cho 3
-            if var_i.startswith("co_") and var_j.startswith("co_"):
-                # Vì chúng ta không biết các giá trị khác, nên không thể kiểm tra trực tiếp
-                # Đây chỉ là ràng buộc mô phỏng
-                return True
-            
-            # Ràng buộc tổng eo chia hết cho 2
-            if var_i.startswith("eo_") and var_j.startswith("eo_"):
-                # Vì chúng ta không biết các giá trị khác, nên không thể kiểm tra trực tiếp
-                # Đây chỉ là ràng buộc mô phỏng
-                return True
-            
-            # Ràng buộc parity
-            if (var_i == "cp_0" and var_j == "ep_0") or (var_i == "ep_0" and var_j == "cp_0"):
-                # Không thể kiểm tra parity chỉ với 2 biến
-                return True
-                
-            return True
+        # AC-3 algorithm
+        result = "<h3>Thuật toán AC-3 (Arc Consistency):</h3>\n"
+        result += "<p>AC-3 sẽ loại bỏ các giá trị không thỏa mãn ràng buộc từ miền của các biến.</p>\n"
         
-        # Thực hiện thuật toán AC-3
-        result += "<h4>Quá trình AC-3:</h4>\n"
-        ac3_steps = []
+        steps = []
+        revisions = 0
         
         while queue:
             xi, xj = queue.pop(0)
+            revision_made = False
+            removed_values = []
             
-            # Ghi lại bước
-            step = f"<p>- Xử lý ràng buộc: (<b>{xi}</b>, <b>{xj}</b>)</p>\n"
-            
-            # Kiểm tra xem có giá trị nào bị loại bỏ không
-            original_domain = domains[xi].copy()
-            revised = False
-            
-            # Loại bỏ các giá trị không thỏa mãn ràng buộc
-            to_remove = []
-            for x in domains[xi]:
-                # Kiểm tra xem có giá trị nào trong miền của xj thỏa mãn ràng buộc với x không
+            # Check if we need to revise the domain of xi
+            for x in list(domains[xi]):  # Create a copy to avoid modifying during iteration
+                # Check if there's a value in xj that satisfies the constraint
                 satisfiable = False
+                
                 for y in domains[xj]:
-                    if is_consistent(xi, x, xj, y):
+                    if self.satisfies_constraint(xi, x, xj, y):
                         satisfiable = True
                         break
                 
                 if not satisfiable:
-                    to_remove.append(x)
-                    revised = True
+                    domains[xi].remove(x)
+                    removed_values.append(x)
+                    revision_made = True
             
-            # Loại bỏ các giá trị
-            for x in to_remove:
-                domains[xi].remove(x)
-            
-            if revised:
-                step += f"<p style='margin-left:20px'>+ Giảm miền của <b>{xi}</b>: {original_domain} → {domains[xi]}</p>\n"
+            if revision_made:
+                revisions += 1
+                step = f"<p>- Xét ràng buộc ({xi}, {xj}): loại bỏ {removed_values} khỏi miền của {xi}</p>\n"
+                steps.append(step)
                 
-                # Nếu miền bị giảm, thêm các ràng buộc liên quan vào hàng đợi
+                # Add neighboring arcs back to the queue
                 for xk, xl in constraints:
                     if xl == xi and xk != xj:
                         queue.append((xk, xi))
                     elif xk == xi and xl != xj:
                         queue.append((xi, xl))
-            else:
-                step += f"<p style='margin-left:20px'>+ Miền của <b>{xi}</b> không thay đổi: {domains[xi]}</p>\n"
             
-            ac3_steps.append(step)
-            
-            # Nếu miền rỗng, AC-3 thất bại
+            # Check for empty domains
             if not domains[xi]:
                 break
         
-        # Hiển thị các bước AC-3
-        for step in ac3_steps[:20]:  # Giới hạn số bước hiển thị
+        # Display the revised domains
+        domain_text = "<h3>Miền giá trị sau khi áp dụng AC-3:</h3>\n"
+        
+        # Group domains by type (cp, co, ep, eo)
+        domain_types = {
+            "cp": "<h4>Corner Permutation (cp):</h4>\n<ul>\n",
+            "co": "<h4>Corner Orientation (co):</h4>\n<ul>\n",
+            "ep": "<h4>Edge Permutation (ep):</h4>\n<ul>\n",
+            "eo": "<h4>Edge Orientation (eo):</h4>\n<ul>\n"
+        }
+        
+        for var in sorted(domains.keys()):
+            var_type = var.split("_")[0]
+            var_index = var.split("_")[1]
+            domain_types[var_type] += f"<li>{var}: {domains[var]}</li>\n"
+        
+        for var_type in domain_types:
+            domain_types[var_type] += "</ul>\n"
+            domain_text += domain_types[var_type]
+        
+        # Update domain text
+        self.domain_text.setHtml(domain_text)
+        
+        # Display AC-3 results
+        result += f"<p>AC-3 đã thực hiện {revisions} lần sửa đổi miền.</p>\n"
+        
+        # Show steps
+        result += "<h4>Các bước thực hiện:</h4>\n"
+        for step in steps[:20]:  # Limit to 20 steps for display
             result += step
-            
-        if len(ac3_steps) > 20:
-            result += f"<p><i>...và {len(ac3_steps) - 20} bước khác</i></p>\n"
         
-        # Kiểm tra kết quả
-        empty_domains = [var for var, dom in domains.items() if not dom]
+        if len(steps) > 20:
+            result += f"<p><i>...và {len(steps) - 20} bước khác</i></p>\n"
         
-        result += f"<h4>AC-3 đã hoàn thành sau {len(ac3_steps)} lần lặp.</h4>\n"
-        
+        # Check for empty domains
+        empty_domains = [var for var, domain in domains.items() if not domain]
         if empty_domains:
-            result += "<p style='color:red; font-weight:bold'>❌ Cấu hình KHÔNG thỏa mãn (có miền rỗng).</p>\n"
-            result += f"<p>Các biến có miền rỗng: {empty_domains}</p>\n"
-            result += "<p>→ Cấu hình này <b>không thể giải được</b>.</p>\n"
+            result += "<h4>Kết quả:</h4>\n"
+            result += f"<p style='color:red'>❌ Không tìm thấy giải pháp. Các biến sau có miền rỗng: {empty_domains}</p>\n"
         else:
-            fixed_vars = sum(len(dom) == 1 for dom in domains.values())
-            unfixed_vars = sum(len(dom) > 1 for dom in domains.values())
+            result += "<h4>Kết quả:</h4>\n"
+            fixed_vars = sum(1 for domain in domains.values() if len(domain) == 1)
+            result += f"<p style='color:green'>✓ AC-3 hoàn thành. {fixed_vars}/{len(variables)} biến đã xác định đầy đủ.</p>\n"
             
-            result += "<p style='color:green; font-weight:bold'>✅ Cấu hình nhất quán sau khi thực thi AC-3.</p>\n"
-            result += f"<p>- {fixed_vars} biến đã xác định đầy đủ</p>\n"
-            result += f"<p>- {unfixed_vars} biến vẫn còn nhiều giá trị có thể</p>\n"
+            # Check if all variables are fixed
+            if fixed_vars == len(variables):
+                result += "<p>Đã tìm thấy một giải pháp hoàn chỉnh!</p>\n"
+                
+                # Extract the solution
+                solution = {}
+                for var, domain in domains.items():
+                    solution[var] = domain[0]
+                
+                # Verify the solution
+                is_valid = self.verify_solution(solution)
+                if is_valid:
+                    result += "<p style='color:green'>✓ Giải pháp thỏa mãn tất cả các ràng buộc!</p>\n"
+                else:
+                    result += "<p style='color:red'>❌ Giải pháp không thỏa mãn tất cả các ràng buộc.</p>\n"
+                
+                # Display the solution
+                result += self.format_solution(solution)
+        
+        self.result_text.setHtml(result)
+        
+        if return_domains:
+            return domains
+    
+    def run_backtracking(self, variables, domains, max_solutions=None):
+        """Chạy thuật toán Backtracking để tìm các giải pháp"""
+        self.result_text.clear()
+        if not self.backtracking_rb.isChecked():  # If combined mode, don't clear domain text
+            self.domain_text.clear()
+        
+        # Copy domains to avoid modifying the original
+        domains = {var: list(values) for var, values in domains.items()}
+        
+        if max_solutions is None:
+            max_solutions = self.solutions_spinbox.value()
+        
+        result = "<h3>Thuật toán Backtracking:</h3>\n"
+        result += f"<p>Tìm tối đa {max_solutions} giải pháp thỏa mãn tất cả các ràng buộc.</p>\n"
+        
+        # Backtracking algorithm
+        solutions = []
+        steps = []
+        
+        def backtrack(assignment, level=0):
+            if len(solutions) >= max_solutions:
+                return
             
-            # Kiểm tra chi tiết hơn
-            if rubik_state:
-                # Kiểm tra các ràng buộc toàn cục (không chỉ theo cặp)
-                cp_values = [rubik_state.cp[i] for i in range(8)]
-                co_values = [rubik_state.co[i] for i in range(8)]
-                ep_values = [rubik_state.ep[i] for i in range(12)]
-                eo_values = [rubik_state.eo[i] for i in range(12)]
-                
-                cp_valid = len(set(cp_values)) == 8 and set(cp_values) == set(range(8))
-                co_valid = sum(co_values) % 3 == 0
-                ep_valid = len(set(ep_values)) == 12 and set(ep_values) == set(range(12))
-                eo_valid = sum(eo_values) % 2 == 0
-                
+            if len(assignment) == len(variables):
+                # Found a solution
+                solutions.append(assignment.copy())
+                return
+            
+            # Choose variable with minimum remaining values (MRV)
+            unassigned = [v for v in variables if v not in assignment]
+            var = min(unassigned, key=lambda v: len(domains[v]))
+            
+            # Try each value in the domain
+            for value in domains[var]:
+                # Check if value is consistent with current assignment
+                if self.is_consistent(var, value, assignment):
+                    # Add to assignment
+                    assignment[var] = value
+                    steps.append(f"<p>{'&nbsp;' * level * 2}- Gán {var} = {value} (mức {level})</p>\n")
+                    
+                    # Recursive call
+                    backtrack(assignment, level + 1)
+                    
+                    # Backtrack
+                    if len(solutions) < max_solutions:
+                        assignment.pop(var)
+                        steps.append(f"<p>{'&nbsp;' * level * 2}- <i>Quay lui từ {var} = {value}</i></p>\n")
+        
+        # Start backtracking with empty assignment
+        backtrack({})
+        
+        # Display the results
+        if not steps:
+            result += "<p>Không có bước nào được thực hiện. Có thể các miền giá trị ban đầu không hợp lệ.</p>\n"
+        else:
+            result += "<h4>Các bước thực hiện:</h4>\n"
+            for step in steps[:30]:  # Limit to 30 steps for display
+                result += step
+            
+            if len(steps) > 30:
+                result += f"<p><i>...và {len(steps) - 30} bước khác</i></p>\n"
+        
+        result += f"<h4>Tìm thấy {len(solutions)} giải pháp:</h4>\n"
+        
+        if not solutions:
+            result += "<p style='color:red'>❌ Không tìm thấy giải pháp thỏa mãn.</p>\n"
+        else:
+            for i, solution in enumerate(solutions):
+                result += f"<h5>Giải pháp {i+1}:</h5>\n"
+                result += self.format_solution(solution)
+        
+        self.result_text.setHtml(result)
+    
+    def satisfies_constraint(self, xi, x, xj, y):
+        """Kiểm tra xem hai biến và giá trị có thỏa mãn ràng buộc không"""
+        # Extract variable types and indices
+        xi_type, xi_idx = xi.split('_')
+        xj_type, xj_idx = xj.split('_')
+        xi_idx, xj_idx = int(xi_idx), int(xj_idx)
+        
+        # Alldiff constraint for corner permutation
+        if xi_type == 'cp' and xj_type == 'cp':
+            return x != y
+        
+        # Alldiff constraint for edge permutation
+        if xi_type == 'ep' and xj_type == 'ep':
+            return x != y
+        
+        # For corner and edge orientation, we can't fully validate the sum constraint
+        # with just two variables, but we can still allow any consistent assignment
+        
+        # For parity constraint, we would need the complete assignments
+        # We'll implement a simplified check in is_consistent for the full assignment
+        
+        return True
+    
+    def is_consistent(self, var, value, assignment):
+        """Kiểm tra xem giá trị của biến có nhất quán với các giá trị đã gán không"""
+        var_type, var_idx = var.split('_')
+        var_idx = int(var_idx)
+        
+        # Check alldiff constraints
+        if var_type == 'cp':
+            for other_var, other_val in assignment.items():
+                if other_var.startswith('cp_') and other_val == value:
+                    return False
+        
+        if var_type == 'ep':
+            for other_var, other_val in assignment.items():
+                if other_var.startswith('ep_') and other_val == value:
+                    return False
+        
+        # Check corner orientation sum constraint
+        if var_type == 'co' and var_idx == 7:  # Last corner orientation variable
+            co_vars = [f"co_{i}" for i in range(8)]
+            if all(co_var in assignment or co_var == var for co_var in co_vars):
+                # Calculate sum of corner orientations
+                co_sum = sum(assignment.get(co_var, 0) for co_var in co_vars if co_var != var) + value
+                if co_sum % 3 != 0:
+                    return False
+        
+        # Check edge orientation sum constraint
+        if var_type == 'eo' and var_idx == 11:  # Last edge orientation variable
+            eo_vars = [f"eo_{i}" for i in range(12)]
+            if all(eo_var in assignment or eo_var == var for eo_var in eo_vars):
+                # Calculate sum of edge orientations
+                eo_sum = sum(assignment.get(eo_var, 0) for eo_var in eo_vars if eo_var != var) + value
+                if eo_sum % 2 != 0:
+                    return False
+        
+        # Check parity constraint if all corner and edge permutations are assigned
+        cp_vars = [f"cp_{i}" for i in range(8)]
+        ep_vars = [f"ep_{i}" for i in range(12)]
+        
+        if ((var_type == 'cp' and var_idx == 7) or (var_type == 'ep' and var_idx == 11)) and \
+           all(cp_var in assignment or (cp_var == var and var_type == 'cp') for cp_var in cp_vars) and \
+           all(ep_var in assignment or (ep_var == var and var_type == 'ep') for ep_var in ep_vars):
+            
+            # Extract corner and edge permutations
+            cp_values = [assignment.get(f"cp_{i}", value if var == f"cp_{i}" else None) for i in range(8)]
+            ep_values = [assignment.get(f"ep_{i}", value if var == f"ep_{i}" else None) for i in range(12)]
+            
+            # Only check parity if we have enough values
+            if all(cp_values) and all(ep_values):
                 cp_parity = self.calculate_parity(cp_values)
                 ep_parity = self.calculate_parity(ep_values)
-                parity_valid = cp_parity == ep_parity
                 
-                all_valid = cp_valid and co_valid and ep_valid and eo_valid and parity_valid
-                
-                result += "<h4>Kiểm tra ràng buộc toàn cục:</h4>\n"
-                result += f"<p>- Hoán vị góc (cp): {self.format_result(cp_valid)}</p>\n"
-                result += f"<p>- Định hướng góc (co): {self.format_result(co_valid)}</p>\n"
-                result += f"<p>- Hoán vị cạnh (ep): {self.format_result(ep_valid)}</p>\n"
-                result += f"<p>- Định hướng cạnh (eo): {self.format_result(eo_valid)}</p>\n"
-                result += f"<p>- Parity góc và cạnh: {self.format_result(parity_valid, 'Khớp nhau', 'Không khớp')}</p>\n"
-                
-                if all_valid:
-                    result += "<p style='color:green; font-weight:bold'>✅ Cấu hình hoàn toàn hợp lệ, có thể giải được.</p>\n"
-                else:
-                    result += "<p style='color:red; font-weight:bold'>❌ Cấu hình vi phạm một số ràng buộc toàn cục.</p>\n"
-                    result += "<p>→ Lưu ý: AC-3 chỉ đảm bảo tính nhất quán theo cặp, không đảm bảo thỏa mãn tất cả ràng buộc toàn cục.</p>\n"
+                if cp_parity != ep_parity:
+                    return False
         
-        return result
+        return True
     
-    def get_selected_algorithm(self):
-        """Lấy thuật toán đang được chọn"""
-        if self.backtracking_rb.isChecked():
-            return "Backtracking"
-        elif self.backtracking_test_rb.isChecked():
-            return "Backtracking Test"
-        elif self.ac3_rb.isChecked():
-            return "AC-3"
-        return "Unknown"
+    def verify_solution(self, solution):
+        """Verify if a solution satisfies all constraints"""
+        # Extract corner and edge permutations and orientations
+        cp = [solution[f"cp_{i}"] for i in range(8)]
+        co = [solution[f"co_{i}"] for i in range(8)]
+        ep = [solution[f"ep_{i}"] for i in range(12)]
+        eo = [solution[f"eo_{i}"] for i in range(12)]
+        
+        # Check permutation constraints
+        if len(set(cp)) != 8 or set(cp) != set(range(8)):
+            return False
+        
+        if len(set(ep)) != 12 or set(ep) != set(range(12)):
+            return False
+        
+        # Check orientation constraints
+        if sum(co) % 3 != 0:
+            return False
+        
+        if sum(eo) % 2 != 0:
+            return False
+        
+        # Check parity constraint
+        cp_parity = self.calculate_parity(cp)
+        ep_parity = self.calculate_parity(ep)
+        
+        return cp_parity == ep_parity
     
-    def insert_template(self):
-        """Chèn mẫu RubikState vào ô nhập thủ công"""
-        template = "RubikState(\n  cp=(0,1,2,3,4,5,6,7),\n  co=(0,0,0,0,0,0,0,0),\n  ep=(0,1,2,3,4,5,6,7,8,9,10,11),\n  eo=(0,0,0,0,0,0,0,0,0,0,0,0)\n)"
-        self.manual_input.setText(template)
-    
-    def insert_component(self, component):
-        """Chèn thành phần cụ thể vào vị trí con trỏ"""
-        cursor = self.manual_input.textCursor()
-        if component == "cp":
-            text = "cp=(0,1,2,3,4,5,6,7)"
-        elif component == "co":
-            text = "co=(0,0,0,0,0,0,0,0)"
-        elif component == "ep":
-            text = "ep=(0,1,2,3,4,5,6,7,8,9,10,11)"
-        elif component == "eo":
-            text = "eo=(0,0,0,0,0,0,0,0,0,0,0,0)"
-        cursor.insertText(text) 
+    def format_solution(self, solution):
+        """Format a solution for display"""
+        # Extract cp, co, ep, eo
+        cp = [solution.get(f"cp_{i}", None) for i in range(8)]
+        co = [solution.get(f"co_{i}", None) for i in range(8)]
+        ep = [solution.get(f"ep_{i}", None) for i in range(12)]
+        eo = [solution.get(f"eo_{i}", None) for i in range(12)]
+        
+        # Format the solution
+        result = "<div style='margin-left:20px'>\n"
+        result += f"<p><b>cp</b> = {cp}</p>\n"
+        result += f"<p><b>co</b> = {co}</p>\n"
+        result += f"<p><b>ep</b> = {ep}</p>\n"
+        result += f"<p><b>eo</b> = {eo}</p>\n"
+        result += "</div>\n"
+        
+        return result 
