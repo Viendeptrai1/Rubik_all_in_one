@@ -353,7 +353,67 @@ Mô hình DeepCubeA dựa trên kiến trúc học tăng cường sâu:
 ##### Rubik 3x3
 ![Informed Search for 3x3 Rubik's Cube](visualizations/3x3_informed_search.png)
 
-![Giao diện phần mềm](https://github.com/vienbn1998/Rubik_all_in_one/raw/main/screenshots/main_interface.png)
+![Giao diện phần mềm](3x3GIF/A-star_3x3.gif)
+
+### 4.4. Mô phỏng động các thuật toán
+
+#### 4.4.1. Giải Rubik 2x2x2
+
+##### Thuật toán tìm kiếm không thông tin
+![BFS for 2x2](2x2GIF/BFS_2x2.gif)
+![DFS for 2x2](2x2GIF/DFS_2x2.gif)
+![IDS for 2x2](2x2GIF/IDS_2x2.gif)
+![UCS for 2x2](2x2GIF/UCS_2x2.gif)
+
+##### Thuật toán tìm kiếm có thông tin
+![A* for 2x2](2x2GIF/A-star_2x2.gif)
+![Greedy Search for 2x2](2x2GIF/Greedy_Search_2x2.gif)
+![IDA* for 2x2](2x2GIF/IDA-star_2x2.gif)
+![Pattern Database for 2x2](2x2GIF/Pattern_Database_2x2.gif)
+
+##### Thuật toán tìm kiếm cục bộ
+![Simple Hill Climbing for 2x2](2x2GIF/Simple_Hill_2x2.gif)
+![Steepest Hill Climbing for 2x2](2x2GIF/Steepest_Hill_2x2.gif)
+![Stochastic Hill Climbing for 2x2](2x2GIF/Stochastic_Hill_2x2.gif)
+![Simulated Annealing for 2x2](2x2GIF/Simulated_Annealing_2x2.gif)
+![Genetic Algorithm for 2x2](2x2GIF/Genetic_2x2.gif)
+![Local Beam Search for 2x2](2x2GIF/Local_Beam_2x2.gif)
+
+##### Thuật toán nâng cao
+![DeepCube for 2x2](2x2GIF/Deepcube_2x2.gif)
+![And-Or Graph Search for 2x2](2x2GIF/And-Or_2x2.gif)
+![Belief State Search for 2x2](2x2GIF/Belief_State_2x2.gif)
+
+#### 4.4.2. Giải Rubik 3x3x3
+
+##### Thuật toán tìm kiếm không thông tin
+![BFS for 3x3](3x3GIF/BFS_3x3.gif)
+![DFS for 3x3](3x3GIF/DFS_3x3.gif)
+![IDS for 3x3](3x3GIF/IDS_3x3.gif)
+![UCS for 3x3](3x3GIF/UCS_3x3.gif)
+
+##### Thuật toán tìm kiếm có thông tin
+![A* for 3x3](3x3GIF/A-star_3x3.gif)
+![Greedy Search for 3x3](3x3GIF/Greedy_Search_3x3.gif)
+![IDA* for 3x3](3x3GIF/IDA-star_3x3.gif)
+
+##### Thuật toán tìm kiếm cục bộ
+![Simple Hill Climbing for 3x3](3x3GIF/Simple_Hill_3x3.gif)
+![Steepest Hill Climbing for 3x3](3x3GIF/Steepest_Hill_3x3.gif)
+![Stochastic Hill Climbing for 3x3](3x3GIF/Stochastic_Hill_3x3.gif)
+![Simulated Annealing for 3x3](3x3GIF/Simulated_Annealing_3x3.gif)
+![Genetic Algorithm for 3x3](3x3GIF/Genetic_3x3.gif)
+![Local Beam Search for 3x3](3x3GIF/Local_Beam_Search_3x3.gif)
+
+##### Thuật toán nâng cao
+![DeepCube for 3x3](3x3GIF/DeepCube_3x3.gif)
+![And-Or Graph Search for 3x3](3x3GIF/And-Or_3x3.gif)
+![Belief State Search for 3x3](3x3GIF/Belief_state_3x3.gif)
+
+##### Thuật toán CSP
+![AC-3 for 3x3](3x3GIF/AC-3.gif)
+![Backtracking for 3x3](3x3GIF/Backtracking_GanTungSo_3x3.gif)
+![Backtracking for Testing 3x3](3x3GIF/Backtracking_KiemThu_3x3.gif)
 
 ## 5. Kết luận
 
