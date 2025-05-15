@@ -131,11 +131,48 @@ class ControlsWidget(QWidget):
         buttons_layout = QHBoxLayout()
         reset_btn = QPushButton("Reset Rubik")
         reset_btn.clicked.connect(self.reset_cube)
+        top_left_layout.addLayout(buttons_layout)
+        buttons_layout.addWidget(reset_btn)
+        
+        # Tạo nhóm nút radio cho độ khó xáo trộn
+        shuffle_group = QGroupBox("Xáo trộn")
+        shuffle_layout = QVBoxLayout()
+        
+        # Tạo layout ngang cho nút xáo trộn và các radio button
+        shuffle_options_layout = QHBoxLayout()
+        
+        # Tạo nút xáo trộn
         shuffle_btn = QPushButton("Xáo trộn")
         shuffle_btn.clicked.connect(self.shuffle_cube)
-        buttons_layout.addWidget(reset_btn)
-        buttons_layout.addWidget(shuffle_btn)
-        top_left_layout.addLayout(buttons_layout)
+        shuffle_options_layout.addWidget(shuffle_btn)
+        
+        # Tạo radio buttons cho các mức độ khó
+        self.difficulty_group = QButtonGroup(self)
+        
+        # Radio button cho mức dễ
+        self.easy_radio = QRadioButton("Dễ")
+        self.easy_radio.setToolTip("2-3 bước")
+        self.difficulty_group.addButton(self.easy_radio, 0)
+        shuffle_options_layout.addWidget(self.easy_radio)
+        
+        # Radio button cho mức trung bình
+        self.medium_radio = QRadioButton("TB")
+        self.medium_radio.setToolTip("4-6 bước")
+        self.difficulty_group.addButton(self.medium_radio, 1)
+        shuffle_options_layout.addWidget(self.medium_radio)
+        
+        # Radio button cho mức khó
+        self.hard_radio = QRadioButton("Khó")
+        self.hard_radio.setToolTip("7-10 bước")
+        self.difficulty_group.addButton(self.hard_radio, 2)
+        shuffle_options_layout.addWidget(self.hard_radio)
+        
+        # Mặc định chọn mức trung bình
+        self.medium_radio.setChecked(True)
+        
+        shuffle_layout.addLayout(shuffle_options_layout)
+        shuffle_group.setLayout(shuffle_layout)
+        top_left_layout.addWidget(shuffle_group)
         
         # Lời giải
         solution_group = QGroupBox("Lời giải")
@@ -579,14 +616,30 @@ class ControlsWidget(QWidget):
         if self.rubik_widget.rubik.animating or self.rubik_widget.move_queue:
             self.solution_status.setText("Không thể xáo trộn khi đang thực hiện animation")
             return
-            
-        # Sinh ngẫu nhiên 20 nước đi
+        
+        # Xác định số bước dựa trên mức độ khó đã chọn
+        selected_difficulty = self.difficulty_group.checkedId()
+        
+        if selected_difficulty == 0:  # Dễ (2-3 bước)
+            num_moves = random.randint(2, 3)
+            difficulty_text = "Dễ"
+        elif selected_difficulty == 1:  # Trung bình (4-6 bước)
+            num_moves = random.randint(4, 6)
+            difficulty_text = "Trung bình"
+        elif selected_difficulty == 2:  # Khó (7-10 bước)
+            num_moves = random.randint(7, 10)
+            difficulty_text = "Khó"
+        else:  # Mặc định (4-6 bước)
+            num_moves = random.randint(4, 6)
+            difficulty_text = "Trung bình"
+        
+        # Sinh ngẫu nhiên nước đi theo số bước đã xác định
         available_moves = ["U", "D", "F", "B", "L", "R"]
         variants = ["", "'", "2"]
         
         # Tạo chuỗi nước đi
         move_strings = []
-        for _ in range(20):
+        for _ in range(num_moves):
             move = random.choice(available_moves)
             variant = random.choice(variants)
             move_strings.append(move + variant)
@@ -602,7 +655,7 @@ class ControlsWidget(QWidget):
         self.update_state_display()
         
         # Thông báo
-        self.solution_status.setText(f"Đã xáo trộn: {display_moves_str}")
+        self.solution_status.setText(f"Đã xáo trộn (Độ khó: {difficulty_text}, {num_moves} bước): {display_moves_str}")
     
     def get_current_state(self):
         """Lấy trạng thái hiện tại của Rubik để sử dụng cho thuật toán giải"""
