@@ -411,9 +411,7 @@ Mô hình DeepCubeA dựa trên kiến trúc học tăng cường sâu:
 ![Belief State Search for 3x3](3x3GIF/Belief_state_3x3.gif)
 
 ##### Thuật toán CSP
-![AC-3 for 3x3](3x3GIF/AC-3.gif)
-![Backtracking for 3x3](3x3GIF/Backtracking_GanTungSo_3x3.gif)
-![Backtracking for Testing 3x3](3x3GIF/Backtracking_KiemThu_3x3.gif)
+![CPS](3x3GIF/CSP.gif)
 
 ## 5. Kết luận
 
