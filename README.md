@@ -453,7 +453,7 @@ Dự án "3D Rubik Simulator & Solver" đã thành công trong việc:
 
 - **Mã nguồn:** [GitHub Repository](https://github.com/vienbn1998/Rubik_all_in_one)
 - **Demo video:** [YouTube Demo](https://youtu.be/demo_link)
-- **Báo cáo chi tiết:** [Link đến file PDF báo cáo nếu có]
+- **Báo cáo chi tiết:** [https://1drv.ms/w/c/02781ffec0781aa3/ERCjZMYslV5EguWVHXl1W1sBEMeLfS_eqCgx8t4cwTJ_ow]
 
 ## 📋 Tác giả
 
