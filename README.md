@@ -448,9 +448,7 @@ Dự án "3D Rubik Simulator & Solver" đã thành công trong việc:
    - Triển khai các biến thể Rubik (Mirror Cube, Pyraminx)
 
 ## 🔗 Liên kết & Tài nguyên
-
-- **Mã nguồn:** [GitHub Repository](https://github.com/vienbn1998/Rubik_all_in_one)
-- **Demo video:** [YouTube Demo](https://youtu.be/demo_link)
+(https://youtu.be/demo_link)
 - **Báo cáo chi tiết:** [https://1drv.ms/w/c/02781ffec0781aa3/ERCjZMYslV5EguWVHXl1W1sBEMeLfS_eqCgx8t4cwTJ_ow]
 
 ## 📋 Tác giả
