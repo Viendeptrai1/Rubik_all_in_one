@@ -457,4 +457,4 @@ Dự án "3D Rubik Simulator & Solver" đã thành công trong việc:
 * Phan Quốc Viễn - 23110362
 * Nguyễn Nhật Huy - 23110226
 
-**Giảng viên hướng dẫn:** [ThS. Phan Thị Huyền Trang]
+**Giảng viên hướng dẫn:** [TS.NCS. Phan Thị Huyền Trang]
